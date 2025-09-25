@@ -1,0 +1,14 @@
+https://chatgpt.com/s/t_68d4db837b4c819187286dbee168086e
+
+
+database:
+bảng User(id, usename, password, role, name)
+
+
+bảng Course(CourseId, teacherId, courseName)
+
+Student(StudentId, courseId)
+
+bảng Baithi(idBaithi, tenBaiThi, courseId)
+
+bảng DiemThi(idBaithi, studenId, date, grade)
