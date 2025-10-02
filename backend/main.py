@@ -3,13 +3,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
-# from . import models, database
-from .routers import items
-
-# models.Base.metadata.create_all(bind=database.engine)
+from .db import models, database
+from .routers import mainrouter
+models.Base.metadata.create_all(bind=database.engine)
 
 app = FastAPI()
-app.include_router(items.router)
+app.include_router(mainrouter)
 
 # Mount thư mục static để phục vụ CSS, JS, images
 BASE_DIR = Path(__file__).resolve().parent.parent  # thư mục gốc PYTHON_WEB_QLDSV
