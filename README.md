@@ -15,7 +15,11 @@ my_project/
 │       └── items.py         # router (API) ví dụ
 │
 │── frontend/
-│   └── index.html           # file frontend JS đơn giản
+│   └── template/
+|       └── index.html           
+│   └── static/
+|       └── stript.js
+|       └── styles.css
 │
 │── requirements.txt         # thư viện cần cài
 
