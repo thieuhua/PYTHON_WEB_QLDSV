@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Date, ForeignKey, relationship
+from sqlalchemy import Column, Integer, String, Date, ForeignKey
 from .database import Base
 import enum
 
@@ -21,8 +21,8 @@ class User(Base):
     name = Column(String, nullable=False)
     
     # Quan hệ
-    courses_taught = relationship("Course", back_populates="teacher")  # giáo viên dạy các khóa
-    student_courses = relationship("Student", back_populates="student_user")  # nếu user là student
+    # courses_taught = relationship("Course", back_populates="teacher")  # giáo viên dạy các khóa
+    # student_courses = relationship("Student", back_populates="student_user")  # nếu user là student
 
 # Bảng Course
 class Course(Base):
@@ -32,21 +32,21 @@ class Course(Base):
     teacherId = Column(Integer, ForeignKey("users.id"))  # liên kết giáo viên
     courseName = Column(String, nullable=False)
     
-    teacher = relationship("User", back_populates="courses_taught")
-    students = relationship("Student", back_populates="course")
-    baithis = relationship("Baithi", back_populates="course")
+    # teacher = relationship("User", back_populates="courses_taught")
+    # students = relationship("Student", back_populates="course")
+    # baithis = relationship("Baithi", back_populates="course")
 
 # Bảng Student (liên kết User với Course)
 class Student(Base):
     __tablename__ = "students"
     
     id = Column(Integer, primary_key=True)
-    studentId = Column(Integer, ForeignKey("users.id"))  # liên kết User
-    courseId = Column(Integer, ForeignKey("courses.courseId"))  # liên kết Course
+    # studentId = Column(Integer, ForeignKey("users.id"))  # liên kết User
+    # courseId = Column(Integer, ForeignKey("courses.courseId"))  # liên kết Course
     
-    student_user = relationship("User", back_populates="student_courses")
-    course = relationship("Course", back_populates="students")
-    diem_this = relationship("DiemThi", back_populates="student")
+    # student_user = relationship("User", back_populates="student_courses")
+    # course = relationship("Course", back_populates="students")
+    # diem_this = relationship("DiemThi", back_populates="student")
 
 # Bảng Baithi (đề thi)
 class Baithi(Base):
@@ -56,8 +56,8 @@ class Baithi(Base):
     tenBaiThi = Column(String, nullable=False)
     courseId = Column(Integer, ForeignKey("courses.courseId"))  # liên kết khóa học
     
-    course = relationship("Course", back_populates="baithis")
-    diem_this = relationship("DiemThi", back_populates="baithi")
+    # course = relationship("Course", back_populates="baithis")
+    # diem_this = relationship("DiemThi", back_populates="baithi")
 
 # Bảng DiemThi
 class DiemThi(Base):
@@ -69,8 +69,8 @@ class DiemThi(Base):
     date = Column(Date)
     grade = Column(Integer)
     
-    baithi = relationship("Baithi", back_populates="diem_this")
-    student = relationship("Student", back_populates="diem_this")
+    # baithi = relationship("Baithi", back_populates="diem_this")
+    # student = relationship("Student", back_populates="diem_this")
 
 # Tạo bảng
 # Base.metadata.create_all(engine)
