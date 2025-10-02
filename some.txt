@@ -5,7 +5,7 @@ database:
 bảng User(id, usename, password, role, name)
 
 
-bảng Course(CourseId, teacherId, courseName)
+bảng Course(courseId, teacherId, courseName)
 
 Student(StudentId, courseId)
 
