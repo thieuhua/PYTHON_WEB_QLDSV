@@ -8,7 +8,7 @@ from .routers import mainrouter
 models.Base.metadata.create_all(bind=database.engine)
 
 app = FastAPI()
-app.include_router(mainrouter)
+app.include_router(mainrouter, prefix="/api")
 
 # Mount thư mục static để phục vụ CSS, JS, images
 BASE_DIR = Path(__file__).resolve().parent.parent  # thư mục gốc PYTHON_WEB_QLDSV
@@ -21,6 +21,16 @@ templates = Jinja2Templates(directory=BASE_DIR / "frontend" / "template")
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
+
+@app.get("/home", response_class=HTMLResponse)
+async def home_page(request: Request):
+    return templates.TemplateResponse("home.html", {"request": request})
+
+
 
 if __name__ == "__main__":
     import uvicorn

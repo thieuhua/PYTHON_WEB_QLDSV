@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import date
-
+from ..db.models import UserRole
 
 
 # ví dụ
@@ -14,15 +14,14 @@ class ItemCreate(ItemBase):
 
 class Item(ItemBase):
     id: int
-
     class Config:
         orm_mode = True
 
 # non_password
 class UserBase(BaseModel):
     username: str
-    role: str
-    name: str
+    role: UserRole = UserRole.student
+    name: Optional[str] = None
 
 ## hassed pass
 class UserCreate(UserBase):
@@ -31,7 +30,7 @@ class UserCreate(UserBase):
 class UserUpdate(BaseModel):
     username: Optional[str]
     password: Optional[str]
-    role: Optional[str]
+    role: Optional[UserRole]
     name: Optional[str]
 
 class UserOut(UserBase):

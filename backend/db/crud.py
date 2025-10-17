@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 from datetime import date
 
 from ..routers import schemas
@@ -16,15 +17,22 @@ def create_item(db: Session, item: schemas.ItemCreate):
 
 
 def create_user(db: Session, user: schemas.UserCreate):
+    
     db_user = models.User(
         username=user.username,
         password=user.password,
         role=user.role,
         name=user.name
     )
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
+    try:
+        db.add(db_user)
+        db.commit()
+        db.refresh(db_user)
+    except SQLAlchemyError as e:
+        db.rollback()
+        print("❌ Lỗi SQLAlchemy:", e)
+        raise
+
     return db_user
 
 def get_user(db: Session, user_id: int):
