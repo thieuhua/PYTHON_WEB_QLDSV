@@ -15,20 +15,26 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 def auth(token: str = Depends(oauth2_scheme)):
     try:
+        token =token.strip("\"")
+        print("Decoding token:", token)
         payload = jwt.decode(token, JWT_SECRET, algorithms=[ALGORITHM])
+        print("payload",payload)
         return payload
-    except JWTError:
+    except JWTError as e:
+        print("JWTError:", e)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-def verify_password(plain_password, hashed_password):
-    return checkpw(plain_password, hashed_password)
+def verify_password(plain_password: str, hashed_password:str) ->bool:
+    return checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+    # return checkpw(plain_password, hashed_password)
 
-def hash_password(password):
-    return hashpw(password, gensalt())
+def hash_password(password: str) -> str:
+    # return hashpw(password, gensalt())
+    return hashpw(password.encode('utf-8'), gensalt()).decode('utf-8')
 
 def create_token(data: dict):
     return jwt.encode(data, JWT_SECRET, algorithm=ALGORITHM)
