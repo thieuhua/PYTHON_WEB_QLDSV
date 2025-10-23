@@ -1,15 +1,76 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>FastAPI Web Example</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ thống quản lý sinh viên</title>
     <link rel="stylesheet" href="/static/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <!-- chao nguoi dung -->
-    <div id="welcome-message">
-        <h1>Chào mừng đến với Hệ thống Quản lý Đánh giá Sinh viên</h1>
-        <p id="user-info">Đang tải thông tin người dùng...</p>    
-    <script src="/static/home.js"></script> <!-- Frontend/static/home.js-->
+<div class="container">
+    <!-- Header -->
+    <header class="header">
+        <div class="logo" id="system-name">Hệ thống quản lý sinh viên</div>
+        <button class="logout-btn" onclick="handleLogout()">Đăng xuất</button>
+    </header>
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="profile-section">
+            <div class="avatar">👨‍🎓</div>
+            <div class="student-info">
+                <div class="info-item"><span class="info-label">Họ tên:</span> <span class="info-value" id="student-name">Nguyễn Văn An</span></div>
+                <div class="info-item"><span class="info-label">Mã SV:</span> <span class="info-value" id="student-id">SV001234</span></div>
+                <div class="info-item"><span class="info-label">Lớp:</span> <span class="info-value" id="student-class">CNTT-K15</span></div>
+                <div class="info-item"><span class="info-label">Ngày sinh:</span> <span class="info-value" id="birth-date">15/03/2002</span></div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main-content">
+        <div class="content-header">
+            <h1 class="page-title">Danh sách lớp học</h1>
+        </div>
+
+        <div class="classes-grid" id="classes-grid">
+            <!-- JS sinh lớp học tại đây -->
+        </div>
+
+        <!-- Bảng điểm -->
+        <section class="score-section" id="score-section" style="display:none;">
+            <h2 class="section-title" id="score-title">📊 Điểm môn học</h2>
+            <table class="score-table">
+                <thead>
+                    <tr>
+                        <th>Môn học</th>
+                        <th>Chuyên cần</th>
+                        <th>Giữa kỳ</th>
+                        <th>Cuối kỳ</th>
+                        <th>Trung bình</th>
+                    </tr>
+                </thead>
+                <tbody id="score-table-body"></tbody>
+            </table>
+        </section>
+
+        <!-- Biểu đồ -->
+        <section class="chart-section" id="chart-section" style="display:none;">
+            <h2 class="section-title">📈 Biểu đồ điểm môn học</h2>
+            <canvas id="scoreChart" width="400" height="200"></canvas>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        © 2025 Hệ thống quản lý sinh viên. Phát triển bởi Khoa CNTT.
+    </footer>
+</div>
+
+<!-- Dark Mode -->
+<button class="dark-mode-toggle" onclick="toggleDarkMode()">🌙</button>
+
+<script src="/static/home.js"></script>
 </body>
 </html>
