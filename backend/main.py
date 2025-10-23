@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 from .db import models, database
+
 from .routers import mainrouter
 models.Base.metadata.create_all(bind=database.engine)
 
