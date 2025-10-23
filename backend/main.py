@@ -29,14 +29,14 @@ async def login_page(request: Request):
 
 @app.get("/home", response_class=HTMLResponse)
 async def home_page(request: Request):
-    return templates.TemplateResponse("home.html", {"request": request})
+    return templates.TemplateResponse("studentHome.html", {"request": request})
 
 @app.get("/student", response_class=HTMLResponse)
 async def student_page(request: Request):
     return templates.TemplateResponse("studentHome.html", {"request": request})
 @app.get("/teacher", response_class=HTMLResponse)
 async def teach_page(request: Request):
-    return templates.TemplateResponse("teacher.html", {"request": request})
+    return templates.TemplateResponse("teacherHome.html", {"request": request})
 
 
 if __name__ == "__main__":
