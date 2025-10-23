@@ -28,6 +28,40 @@ async function postData(url = "", data = {}) {
     return res.text(); // API trả về token dạng text
 }
 
+function checkLogin(token) {
+    if (token) {
+        fetch("/api/me", {
+            method: "GET",
+            headers: {
+                "Authorization": `Bearer ${token}`
+            }
+        })
+        .then(res => {
+            if (!res.ok) throw new Error("Token không hợp lệ hoặc đã hết hạn");
+            return res.json();
+        })
+        .then(data => {
+            userInfoData = data;
+            if (data.role == "student"){
+                window.location.href = "/student";
+            }
+            else if (data.role == "teacher"){
+                window.location.href = "/teacher";
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            localStorage.removeItem("token");
+            alert("Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại!");
+            window.location.href = "/login";
+        });
+    } else {
+        // Chưa có token -> chuyển đến trang đăng nhập
+        // window.location.href = "/login";
+    }
+}
+
+
 // ====== Xử lý đăng ký ======
 const registerForm = document.querySelector(".sign-up-container form");
 registerForm.addEventListener("submit", async (e) => {
@@ -48,8 +82,7 @@ registerForm.addEventListener("submit", async (e) => {
     try {
         const token = await postData("/api/register", { username, password });
         localStorage.setItem("token", token);
-        alert("Đăng ký thành công!");
-        window.location.href = "/home";
+        checkLogin(token);
     } catch (err) {
         alert("Lỗi đăng ký: " + err.message);
     }
@@ -69,7 +102,7 @@ loginForm.addEventListener("submit", async (e) => {
     try {
         const token = await postData("/api/login", { username, password });
         localStorage.setItem("token", token);
-        window.location.href = "/home";
+        checkLogin(token);
     } catch (err) {
         alert("Sai tên đăng nhập hoặc mật khẩu!");
     }

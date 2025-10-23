@@ -20,7 +20,7 @@ templates = Jinja2Templates(directory=BASE_DIR / "frontend" / "template")
 
 # Route gốc trả về HTML
 @app.get("/", response_class=HTMLResponse)
-async def home(request: Request):
+async def entry(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
 @app.get("/login", response_class=HTMLResponse)
@@ -31,6 +31,12 @@ async def login_page(request: Request):
 async def home_page(request: Request):
     return templates.TemplateResponse("home.html", {"request": request})
 
+@app.get("/student", response_class=HTMLResponse)
+async def student_page(request: Request):
+    return templates.TemplateResponse("studentHome.html", {"request": request})
+@app.get("/teacher", response_class=HTMLResponse)
+async def teach_page(request: Request):
+    return templates.TemplateResponse("teacher.html", {"request": request})
 
 
 if __name__ == "__main__":
