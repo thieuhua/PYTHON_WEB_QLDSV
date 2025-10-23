@@ -1,21 +1,14 @@
-/* =========================
-   RESET VÀ BIẾN MÀU CHỦ ĐẠO
-   ========================= */
 :root {
-    --main-color: #DC143C;      /* Đỏ chủ đạo */
-    --secondary-color: #F75270; /* Hồng tươi */
-    --accent-color: #F7CAC9;    /* Hồng nhạt */
-    --light-bg: #FDEBD0;        /* Nền sáng */
+    --main-color: #DC143C;
+    --secondary-color: #F75270;
+    --accent-color: #F7CAC9;
+    --light-bg: #FDEBD0;
     --text-color: #333;
     --shadow-color: rgba(0, 0, 0, 0.1);
     --transition: all 0.3s ease;
 }
 
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
     font-family: "Poppins", sans-serif;
@@ -27,9 +20,7 @@ body {
     transition: var(--transition);
 }
 
-/* =========================
-   CONTAINER CHÍNH
-   ========================= */
+/* Layout */
 .container {
     display: grid;
     grid-template-columns: 250px 1fr;
@@ -41,9 +32,7 @@ body {
     min-height: 100vh;
 }
 
-/* =========================
-   HEADER
-   ========================= */
+/* Header */
 .header {
     grid-area: header;
     background: linear-gradient(90deg, var(--main-color), var(--secondary-color));
@@ -54,30 +43,19 @@ body {
     align-items: center;
     box-shadow: 0 4px 8px var(--shadow-color);
 }
-
-.header .logo {
-    font-size: 1.6rem;
-    font-weight: 600;
-}
-
+.header .logo { font-size: 1.6rem; font-weight: 600; }
 .logout-btn {
     background-color: white;
     color: var(--main-color);
     border: none;
     padding: 0.6rem 1.2rem;
     border-radius: 20px;
-    font-weight: 500;
     cursor: pointer;
     transition: var(--transition);
 }
+.logout-btn:hover { background-color: var(--accent-color); }
 
-.logout-btn:hover {
-    background-color: var(--accent-color);
-}
-
-/* =========================
-   SIDEBAR
-   ========================= */
+/* Sidebar */
 .sidebar {
     grid-area: sidebar;
     background-color: white;
@@ -85,142 +63,52 @@ body {
     border-right: 2px solid var(--accent-color);
     box-shadow: 2px 0 8px var(--shadow-color);
 }
-
-.profile-section {
-    text-align: center;
-}
-
 .avatar {
     font-size: 4rem;
     background-color: var(--accent-color);
     border-radius: 50%;
-    width: 80px;
-    height: 80px;
-    margin: 0 auto 1rem auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    width: 80px; height: 80px;
+    margin: 0 auto 1rem;
+    display: flex; align-items: center; justify-content: center;
 }
+.info-item { margin-bottom: 0.4rem; }
+.info-label { font-weight: 600; color: var(--main-color); }
 
-.student-info {
-    font-size: 0.9rem;
-    text-align: left;
-}
-
-.info-item {
-    margin-bottom: 0.4rem;
-}
-
-.info-label {
-    font-weight: 600;
-    color: var(--main-color);
-}
-
-/* =========================
-   MAIN CONTENT
-   ========================= */
+/* Main */
 .main-content {
     grid-area: main;
     padding: 2rem;
     background-color: var(--light-bg);
 }
+.page-title { font-size: 1.8rem; color: var(--main-color); margin-bottom: 1.5rem; }
 
-.content-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1.5rem;
-}
-
-.page-title {
-    font-size: 1.8rem;
-    color: var(--main-color);
-}
-
-/* =========================
-   SEARCH BOX
-   ========================= */
-.search-container {
-    position: relative;
-    display: flex;
-    align-items: center;
-}
-
-.search-input {
-    padding: 0.6rem 2.5rem 0.6rem 1rem;
-    border: 2px solid var(--accent-color);
-    border-radius: 25px;
-    outline: none;
-    transition: var(--transition);
-    font-size: 0.9rem;
-    background-color: white;
-}
-
-.search-input:focus {
-    border-color: var(--secondary-color);
-    box-shadow: 0 0 5px var(--secondary-color);
-}
-
-.search-icon {
-    position: absolute;
-    right: 10px;
-    font-size: 1.1rem;
-    color: var(--main-color);
-}
-
-/* =========================
-   GRID DANH SÁCH LỚP
-   ========================= */
+/* Classes grid */
 .classes-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 1.5rem;
 }
-
 .class-card {
     background-color: white;
     border-radius: 15px;
     box-shadow: 0 4px 8px var(--shadow-color);
     padding: 1.2rem;
     transition: var(--transition);
-    position: relative;
-    border: 2px solid transparent;
+    cursor: pointer;
 }
-
 .class-card:hover {
     transform: translateY(-5px);
-    border-color: var(--main-color);
-    box-shadow: 0 6px 15px rgba(220, 20, 60, 0.3);
+    border: 2px solid var(--main-color);
 }
-
 .class-name {
     font-size: 1.2rem;
     font-weight: 600;
     color: var(--main-color);
     margin-bottom: 0.5rem;
 }
+.class-code { font-size: 0.9rem; color: #555; margin-bottom: 0.6rem; }
 
-.class-code {
-    font-size: 0.9rem;
-    color: #555;
-    margin-bottom: 0.6rem;
-}
-
-.class-schedule {
-    font-size: 0.85rem;
-    color: #444;
-    margin-bottom: 0.8rem;
-}
-
-.schedule-item {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-}
-
-/* =========================
-   PROGRESS BAR
-   ========================= */
+/* Progress bar */
 .progress-bar {
     height: 8px;
     background-color: var(--accent-color);
@@ -228,18 +116,13 @@ body {
     overflow: hidden;
     margin-top: 0.5rem;
 }
-
 .progress-fill {
     height: 100%;
     background: linear-gradient(90deg, var(--main-color), var(--secondary-color));
-    width: 0;
-    border-radius: 10px;
     transition: width 1s ease-in-out;
 }
 
-/* =========================
-   BẢNG ĐIỂM
-   ========================= */
+/* Score table */
 .score-section {
     margin-top: 2rem;
     background-color: white;
@@ -247,36 +130,23 @@ body {
     border-radius: 15px;
     box-shadow: 0 4px 10px var(--shadow-color);
 }
-
-.section-title {
-    color: var(--main-color);
-    margin-bottom: 1rem;
-}
-
+.section-title { color: var(--main-color); margin-bottom: 1rem; }
 .score-table {
     width: 100%;
     border-collapse: collapse;
     text-align: center;
 }
-
 .score-table th {
     background-color: var(--main-color);
     color: white;
     padding: 0.8rem;
 }
-
 .score-table td {
     padding: 0.6rem;
     border-bottom: 1px solid var(--accent-color);
 }
 
-.score-table tr:hover {
-    background-color: var(--light-bg);
-}
-
-/* =========================
-   BIỂU ĐỒ
-   ========================= */
+/* Chart */
 .chart-section {
     margin-top: 2rem;
     background-color: white;
@@ -285,75 +155,35 @@ body {
     box-shadow: 0 4px 10px var(--shadow-color);
 }
 
-/* =========================
-   FOOTER
-   ========================= */
+/* Footer */
 .footer {
     grid-area: footer;
     background-color: white;
     text-align: center;
     padding: 1rem;
     font-size: 0.85rem;
-    border-top: 1px solid var(--accent-color);
     color: var(--main-color);
+    border-top: 1px solid var(--accent-color);
 }
 
-/* =========================
-   DARK MODE
-   ========================= */
-.dark-mode {
-    background-color: #222;
-    color: #eee;
-}
-
-.dark-mode .header {
-    background: linear-gradient(90deg, #111, #333);
-}
-
-.dark-mode .sidebar,
-.dark-mode .main-content,
-.dark-mode .footer {
-    background-color: #333;
-    color: #eee;
-}
-
-.dark-mode .class-card {
-    background-color: #444;
-    color: #fff;
-    border-color: #555;
-}
-
-/* =========================
-   NÚT DARK MODE
-   ========================= */
+/* Dark Mode + Button */
+.dark-mode { background-color: #222; color: #eee; }
+.dark-mode .class-card { background-color: #444; border-color: #555; }
 .dark-mode-toggle {
-    position: fixed;
-    bottom: 20px;
-    right: 25px;
+    position: fixed; bottom: 20px; right: 25px;
     background-color: var(--main-color);
-    color: white;
-    border: none;
+    color: white; border: none;
     padding: 0.8rem;
     border-radius: 50%;
     font-size: 1.2rem;
     cursor: pointer;
     box-shadow: 0 4px 10px var(--shadow-color);
     transition: var(--transition);
-    z-index: 1000;
 }
+.dark-mode-toggle:hover { transform: scale(1.1); background-color: var(--secondary-color); }
 
-.dark-mode-toggle:hover {
-    transform: scale(1.1);
-    background-color: var(--secondary-color);
-}
-
-/* =========================
-   TOOLTIP
-   ========================= */
-.tooltip {
-    position: relative;
-}
-
+/* Tooltip */
+.tooltip { position: relative; }
 .tooltip::after {
     content: attr(data-tooltip);
     position: absolute;
@@ -362,35 +192,9 @@ body {
     font-size: 0.8rem;
     padding: 0.4rem 0.6rem;
     border-radius: 6px;
-    top: -35px;
-    left: 50%;
+    top: -35px; left: 50%;
     transform: translateX(-50%);
-    opacity: 0;
-    white-space: nowrap;
-    pointer-events: none;
-    transition: var(--transition);
-    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-    z-index: 100; /* đảm bảo nổi lên trên */
-}
-
-.tooltip:hover::after {
-    opacity: 1;
-    transform: translate(-50%, -8px);
-}
-
-.tooltip::before {
-    content: "";
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    border-width: 6px;
-    border-style: solid;
-    border-color: transparent transparent var(--main-color) transparent;
     opacity: 0;
     transition: var(--transition);
 }
-
-.tooltip:hover::before {
-    opacity: 1;
-}
+.tooltip:hover::after { opacity: 1; transform: translate(-50%, -8px); }

@@ -33,13 +33,9 @@ const registerForm = document.querySelector(".sign-up-container form");
 registerForm.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const inputs = registerForm.querySelectorAll("input");
-    const [fullnameInput, studentIdInput, classInput, dobInput, usernameInput, passwordInput, retypeInput] = inputs;
+    const [usernameInput, passwordInput, retypeInput] =
+        registerForm.querySelectorAll("input");
 
-    const fullname = fullnameInput.value.trim();
-    const studentId = studentIdInput.value.trim();
-    const className = classInput.value.trim();
-    const dob = dobInput.value;
     const username = usernameInput.value.trim();
     const password = passwordInput.value;
     const retype = retypeInput.value;
@@ -50,15 +46,7 @@ registerForm.addEventListener("submit", async (e) => {
     }
 
     try {
-        const token = await postData("/api/register", {
-            fullname,
-            studentId,
-            className,
-            dob,
-            username,
-            password
-        });
-
+        const token = await postData("/api/register", { username, password });
         localStorage.setItem("token", token);
         alert("Đăng ký thành công!");
         window.location.href = "/home";
@@ -72,7 +60,8 @@ const loginForm = document.querySelector(".sign-in-container form");
 loginForm.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const [usernameInput, passwordInput] = loginForm.querySelectorAll("input");
+    const [usernameInput, passwordInput] =
+        loginForm.querySelectorAll("input");
 
     const username = usernameInput.value.trim();
     const password = passwordInput.value;

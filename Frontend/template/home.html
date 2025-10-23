@@ -1,6 +1,5 @@
 <!doctype html>
 <html lang="vi">
->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -33,10 +32,6 @@
     <main class="main-content">
         <div class="content-header">
             <h1 class="page-title">Danh sách lớp học</h1>
-            <div class="search-container">
-                <span class="search-icon">🔍</span>
-                <input type="text" class="search-input" id="search-input" placeholder="Tìm kiếm lớp học...">
-            </div>
         </div>
 
         <div class="classes-grid" id="classes-grid">
@@ -44,8 +39,8 @@
         </div>
 
         <!-- Bảng điểm -->
-        <section class="score-section">
-            <h2 class="section-title">📊 Điểm thành phần các môn học</h2>
+        <section class="score-section" id="score-section" style="display:none;">
+            <h2 class="section-title" id="score-title">📊 Điểm môn học</h2>
             <table class="score-table">
                 <thead>
                     <tr>
@@ -56,15 +51,13 @@
                         <th>Trung bình</th>
                     </tr>
                 </thead>
-                <tbody id="score-table-body">
-                    <!-- JS render -->
-                </tbody>
+                <tbody id="score-table-body"></tbody>
             </table>
         </section>
 
         <!-- Biểu đồ -->
-        <section class="chart-section">
-            <h2 class="section-title">📈 Biểu đồ xu hướng điểm trung bình</h2>
+        <section class="chart-section" id="chart-section" style="display:none;">
+            <h2 class="section-title">📈 Biểu đồ điểm môn học</h2>
             <canvas id="scoreChart" width="400" height="200"></canvas>
         </section>
     </main>
