@@ -4,15 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hệ thống quản lý sinh viên</title>
-    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="/static/studentHome.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- THÊM DÒNG NÀY -->
+    <script src="/static/login.js"></script>
 </head>
 <body>
 <div class="container">
     <!-- Header -->
     <header class="header">
         <div class="logo" id="system-name">Hệ thống quản lý sinh viên</div>
-        <button class="logout-btn" onclick="handleLogout()">Đăng xuất</button>
+        <button class="logout-btn" onclick="logout()">Đăng xuất</button> <!-- SỬA: logout() thay vì handleLogout() -->
     </header>
 
     <!-- Sidebar -->
@@ -71,6 +73,6 @@
 <!-- Dark Mode -->
 <button class="dark-mode-toggle" onclick="toggleDarkMode()">🌙</button>
 
-<script src="/static/home.js"></script>
+<script src="/static/studentHome.js"></script>
 </body>
 </html>

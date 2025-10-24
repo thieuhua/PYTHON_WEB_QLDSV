@@ -1,76 +1,113 @@
 <!doctype html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ thống quản lý sinh viên</title>
-    <link rel="stylesheet" href="/static/styles.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hệ thống quản lý lớp học và sinh viên</title>
+
+    <!-- ✅ Dùng url_for đúng cú pháp FastAPI -->
+    <link rel="stylesheet" href="{{ url_for('static', path='teacherHome.css') }}">
+    <script defer src="{{ url_for('static', path='teacherHome.js') }}"></script>
 </head>
+
 <body>
-<div class="container">
-    <!-- Header -->
-    <header class="header">
-        <div class="logo" id="system-name">Hệ thống quản lý sinh viên</div>
-        <button class="logout-btn" onclick="handleLogout()">Đăng xuất</button>
-    </header>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-content">
+      <div class="logo"> Hệ thống quản lý lớp học</div>
+      <nav class="nav-menu">
+       
+      </nav>
+      <button class="logout-btn" onclick="logout()">Đăng xuất</button>
+    </div>
+  </header>
 
-    <!-- Sidebar -->
-    <aside class="sidebar">
-        <div class="profile-section">
-            <div class="avatar">👨‍🎓</div>
-            <div class="student-info">
-                <div class="info-item"><span class="info-label">Họ tên:</span> <span class="info-value" id="student-name">Nguyễn Văn An</span></div>
-                <div class="info-item"><span class="info-label">Mã SV:</span> <span class="info-value" id="student-id">SV001234</span></div>
-                <div class="info-item"><span class="info-label">Lớp:</span> <span class="info-value" id="student-class">CNTT-K15</span></div>
-                <div class="info-item"><span class="info-label">Ngày sinh:</span> <span class="info-value" id="birth-date">15/03/2002</span></div>
+  <div class="container">
+    <!-- Trang chủ: Tạo lớp & danh sách -->
+    <section id="home" class="section active">
+      <div class="create-class-form">
+        <h2 class="form-title">Tạo lớp học mới</h2>
+        <form id="create-class-form">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Tên lớp học</label>
+              <input type="text" id="class-name" class="form-input" required />
             </div>
+            <div class="form-group">
+              <label class="form-label">Mã lớp</label>
+              <input type="text" id="class-code" class="form-input" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Số lượng tối đa</label>
+              <input type="number" id="max-students" class="form-input" min="1" max="200" required />
+            </div>
+          </div>
+          <button type="submit" class="create-btn">Tạo lớp học</button>
+        </form>
+      </div>
+
+      <div class="classes-grid" id="classes-grid"></div>
+    </section>
+  </div>
+
+  <!-- Modal chi tiết lớp -->
+  <div id="class-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="modal-class-name"></h3>
+        <button class="close-btn" onclick="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-top">
+          <div><b>Mã lớp:</b> <span id="modal-class-code"></span></div>
+          <div><b>SV:</b> <span id="modal-count"></span>/<span id="modal-max"></span></div>
         </div>
-    </aside>
 
-    <!-- Main -->
-    <main class="main-content">
-        <div class="content-header">
-            <h1 class="page-title">Danh sách lớp học</h1>
+        <div class="import-export">
+          <input type="file" id="import-file" accept=".csv" style="display:none" onchange="importCSV(event)">
+          <button class="create-btn small" onclick="triggerImport()">Import CSV</button>
+          <button class="create-btn small" onclick="exportCSV()">Export CSV</button>
+          <button class="create-btn small danger" onclick="confirmDeleteClass()">Xóa lớp</button>
         </div>
 
-        <div class="classes-grid" id="classes-grid">
-            <!-- JS sinh lớp học tại đây -->
+        <div class="add-student">
+          <h4>Thêm sinh viên</h4>
+          <div class="form-grid small">
+            <input type="text" id="student-name" placeholder="Họ tên" />
+            <input type="text" id="student-id" placeholder="Mã SV" />
+            <button id="add-student-btn" class="create-btn small">Thêm</button>
+          </div>
+          <div id="add-student-warning" class="small-warning"></div>
         </div>
 
-        <!-- Bảng điểm -->
-        <section class="score-section" id="score-section" style="display:none;">
-            <h2 class="section-title" id="score-title">📊 Điểm môn học</h2>
-            <table class="score-table">
-                <thead>
-                    <tr>
-                        <th>Môn học</th>
-                        <th>Chuyên cần</th>
-                        <th>Giữa kỳ</th>
-                        <th>Cuối kỳ</th>
-                        <th>Trung bình</th>
-                    </tr>
-                </thead>
-                <tbody id="score-table-body"></tbody>
-            </table>
-        </section>
+        <div class="student-list">
+          <h4>Danh sách sinh viên</h4>
+          <button class="create-btn small danger" onclick="deleteSelectedStudents()">Xóa đã chọn</button>
+          <table class="student-table">
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="select-all" onchange="toggleSelectAll(this)"></th>
+                <th>#</th>
+                <th>Họ tên</th>
+                <th>Mã SV</th>
+                <th>Chuyên cần</th>
+                <th>Giữa kỳ</th>
+                <th>Cuối kỳ</th>
+                <th>Trung bình</th>
+                <th>Hành động</th>
+              </tr>
+            </thead>
+            <tbody id="student-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="create-btn" onclick="closeModal()">Đóng</button>
+      </div>
+    </div>
+  </div>
 
-        <!-- Biểu đồ -->
-        <section class="chart-section" id="chart-section" style="display:none;">
-            <h2 class="section-title">📈 Biểu đồ điểm môn học</h2>
-            <canvas id="scoreChart" width="400" height="200"></canvas>
-        </section>
-    </main>
-
-    <!-- Footer -->
-    <footer class="footer">
-        © 2025 Hệ thống quản lý sinh viên. Phát triển bởi Khoa CNTT.
-    </footer>
-</div>
-
-<!-- Dark Mode -->
-<button class="dark-mode-toggle" onclick="toggleDarkMode()">🌙</button>
-
-<script src="/static/home.js"></script>
+  <div id="notif-container"></div>
+  <script src="teacherHome.js"></script>
 </body>
 </html>

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Access Denied - 403</title>
+    <!-- THÊM IMPORT login.js -->
+    <script src="/static/login.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #333;
+            padding: 20px;
+        }
+        
+        .error-container {
+            background: white;
+            padding: 50px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        .error-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            color: #d63031;
+            margin-bottom: 15px;
+            font-size: 36px;
+        }
+        
+        p {
+            color: #666;
+            margin-bottom: 25px;
+            font-size: 18px;
+            line-height: 1.6;
+        }
+        
+        .user-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #3498db;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 12px 25px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            display: inline-block;
+        }
+        
+        .btn-home {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-login {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .btn-logout {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn-home:hover { background: #2980b9; }
+        .btn-login:hover { background: #219a52; }
+        .btn-logout:hover { background: #c0392b; }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-icon">🔐</div>
+        <h1>Truy Cập Bị Từ Chối</h1>
+        <p><strong>Bạn không có quyền truy cập trang này.</strong></p>
+        <p>Trang này chỉ dành cho người dùng có quyền phù hợp.</p>
+        
+        <div class="user-info" id="userInfo">
+            <!-- Thông tin user sẽ được thêm bằng JavaScript -->
+        </div>
+        
+        <div class="btn-group">
+            <a href="/" class="btn btn-home">🏠 Trang Chủ</a>
+            <a href="/login" class="btn btn-login">🔐 Đăng Nhập Khác</a>
+            <button onclick="logout()" class="btn btn-logout">🚪 Đăng Xuất</button>
+        </div>
+    </div>
+
+    <script>
+        // Hiển thị thông tin user hiện tại
+        function displayUserInfo() {
+            const userInfo = localStorage.getItem('userInfo');
+            const userInfoDiv = document.getElementById('userInfo');
+            
+            if (userInfo) {
+                try {
+                    const user = JSON.parse(userInfo);
+                    userInfoDiv.innerHTML = `
+                        <strong>👤 User hiện tại:</strong> ${user.username} 
+                        <br><strong>🎯 Role:</strong> ${user.role}
+                        <br><small>Bạn cần role phù hợp để truy cập trang này</small>
+                    `;
+                } catch (e) {
+                    userInfoDiv.innerHTML = `<strong>⚠️ Không thể load thông tin user</strong>`;
+                }
+            } else {
+                userInfoDiv.innerHTML = `<strong>🔒 Bạn chưa đăng nhập</strong>`;
+            }
+        }
+
+        // Gọi khi trang load
+        document.addEventListener('DOMContentLoaded', function() {
+            displayUserInfo();
+        });
+    </script>
+</body>
+</html>
