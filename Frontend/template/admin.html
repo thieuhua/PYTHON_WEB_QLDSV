@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Quản lý User</title>
+    <link rel="stylesheet" href="/static/admin.css">
+    <!-- QUAN TRỌNG: Import login.js trước admin.js -->
+    <script src="/static/login.js"></script>
+</head>
+<body>
+    <div class="admin-container">
+        <header>
+            <h1>🛠️ Admin Panel - Quản lý User</h1>
+            <nav>
+                <a href="/">🏠 Home</a>
+                <!-- Nút logout -->
+                <button onclick="logout()" style="background: #ff4757; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-left: 10px;">
+                    🚪 Đăng xuất
+                </button>
+            </nav>
+        </header>
+
+        <main>
+            <!-- Hiển thị thông tin user admin -->
+            <div class="user-welcome" id="userWelcome" style="background: #e3f2fd; padding: 10px; border-radius: 5px; margin-bottom: 20px; display: none;">
+                <strong>👋 Xin chào: </strong><span id="currentUsername"></span> 
+                | <strong>🎯 Role: </strong><span id="currentUserRole"></span>
+            </div>
+
+            <!-- Thống kê -->
+            <div class="stats">
+                <div class="stat-card">
+                    <h3>Tổng User</h3>
+                    <span id="totalUsers">0</span>
+                </div>
+                <div class="stat-card">
+                    <h3>Student</h3>
+                    <span id="totalStudents">0</span>
+                </div>
+                <div class="stat-card">
+                    <h3>Teacher</h3>
+                    <span id="totalTeachers">0</span>
+                </div>
+                <div class="stat-card">
+                    <h3>Admin</h3>
+                    <span id="totalAdmins">0</span>
+                </div>
+            </div>
+
+            <!-- Danh sách user -->
+            <div class="users-section">
+                <h2>📋 Danh sách User</h2>
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Tìm kiếm user...">
+                </div>
+                <div class="users-table-container">
+                    <table class="users-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Username</th>
+                                <th>Role</th>
+                                <th>Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTableBody">
+                            <!-- Dữ liệu sẽ được thêm bằng JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal phân quyền -->
+    <div id="roleModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>Phân quyền User</h3>
+            <p>User: <strong id="modalUsername"></strong></p>
+            <div class="role-options">
+                <label>
+                    <input type="radio" name="role" value="student"> 👨‍🎓 Student
+                </label>
+                <label>
+                    <input type="radio" name="role" value="teacher"> 👨‍🏫 Teacher
+                </label>
+                <label>
+                    <input type="radio" name="role" value="admin"> 🛠️ Admin
+                </label>
+            </div>
+            <button id="updateRoleBtn" class="btn-update">Cập nhật Role</button>
+        </div>
+    </div>
+
+    <script src="/static/admin.js"></script>
+
+    <script>
+        // Hiển thị thông tin user admin khi trang load
+        document.addEventListener('DOMContentLoaded', function() {
+            const userInfo = localStorage.getItem('userInfo');
+            if (userInfo) {
+                try {
+                    const user = JSON.parse(userInfo);
+                    document.getElementById('currentUsername').textContent = user.username;
+                    document.getElementById('currentUserRole').textContent = user.role;
+                    document.getElementById('userWelcome').style.display = 'block';
+                } catch (e) {
+                    console.error('Lỗi hiển thị user info:', e);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
