@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hồ sơ cá nhân</title>
+    <link rel="stylesheet" href="/static/profile.css">
+    <script defer src="/static/profile.js"></script>
+</head>
+<body>
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">Hệ thống quản lý sinh viên</div>
+            <button class="logout-btn" onclick="logout()">Đăng xuất</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <aside class="sidebar">
+            <div class="profile-section">
+                <div class="avatar">👤</div>
+                <div class="student-info">
+                    <div class="info-item"><span class="info-label">Tài khoản:</span> <span class="info-value" id="username">-</span></div>
+                    <div class="info-item"><span class="info-label">Vai trò:</span> <span class="info-value" id="user-role">-</span></div>
+                    <div class="info-item"><span class="info-label">Mã SV/GV:</span> <span class="info-value" id="student-code">-</span></div>
+                    <div class="info-item"><span class="info-label">Ngày sinh:</span> <span class="info-value" id="birthdate-display">-</span></div>
+                </div>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="card profile-card">
+                <div class="card-header">
+                    <h2>Chỉnh sửa hồ sơ</h2>
+                </div>
+                <div class="card-body">
+                    <form id="profileForm">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label">Họ tên</label>
+                                <input type="text" id="fullName" class="form-input" required />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Email</label>
+                                <input type="email" id="email" class="form-input" />
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Mật khẩu mới (để trống nếu không đổi)</label>
+                                <input type="password" id="newPassword" class="form-input" />
+                            </div>
+                        </div>
+
+                        <div id="studentFields" class="profile-section-block" style="display:none;">
+                            <h4>Thông tin sinh viên</h4>
+                            <div class="form-grid small">
+                                <div class="form-group">
+                                    <label class="form-label">Mã sinh viên</label>
+                                    <input type="text" id="studentCode" class="form-input" readonly />
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Ngày sinh</label>
+                                    <input type="date" id="birthdate" class="form-input" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="teacherFields" class="profile-section-block" style="display:none;">
+                            <h4>Thông tin giảng viên</h4>
+                            <div class="form-grid small">
+                                <div class="form-group">
+                                    <label class="form-label">Khoa/Phòng</label>
+                                    <input type="text" id="department" class="form-input" />
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Chức danh</label>
+                                    <input type="text" id="title" class="form-input" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="create-btn">Lưu thay đổi</button>
+                            <button type="button" class="create-btn small" onclick="history.back()">Quay lại</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="notif-container"></div>
+</body>
+</html>

@@ -24,7 +24,7 @@ async def get_current_user(request: Request):
     """Lấy thông tin user từ token"""
     try:
         # Lấy token từ cookie hoặc header
-        token = request.cookies.get("access_token")
+        token = request.cookies.get("token")
         if not token:
             # Hoặc từ Authorization header
             auth_header = request.headers.get("Authorization")
@@ -87,6 +87,10 @@ async def teach_page(request: Request, user = Depends(require_role("teacher"))):
 async def admin_page(request: Request, user = Depends(require_role("admin"))):
     return templates.TemplateResponse("admin.html", {"request": request})
 
+@app.get("/editProfile", response_class=HTMLResponse)
+async def edit_profile_page(request: Request):
+    return templates.TemplateResponse("profile.html", {"request": request})
+
 # ====== ERROR HANDLER ======
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
@@ -99,7 +103,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         status_code=exc.status_code,
         content={"detail": exc.detail},
     )
-
+ 
 @app.get("/403", response_class=HTMLResponse)
 async def access_denied_page(request: Request):
     return templates.TemplateResponse("403.html", {"request": request})

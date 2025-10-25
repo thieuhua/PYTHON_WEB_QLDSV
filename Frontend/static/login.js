@@ -120,17 +120,20 @@ function hasPermission(userRole, path) {
     const rolePermissions = {
         'student': [
             '/',            // Trang chủ
-            '/student'      // Trang student
+            '/student',      // Trang student
+            '/editProfile' // Trang chỉnh sửa profile
         ],
         'teacher': [
             '/',            // Trang chủ  
-            '/teacher'      // Trang teacher
+            '/teacher',      // Trang teacher
+            '/editProfile' // Trang chỉnh sửa profile
         ],
         'admin': [
             '/',            // Trang chủ
             '/student',     // Trang student
             '/teacher',     // Trang teacher
-            '/admin'        // Trang admin
+            '/admin',        // Trang admin
+            '/editProfile' // Trang chỉnh sửa profile
         ]
     };
     

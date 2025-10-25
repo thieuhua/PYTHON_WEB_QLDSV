@@ -38,6 +38,10 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     role: Optional[UserRole] = None
     password: Optional[str] = None
+    # student/teacher profile fields for updating
+    birthdate: Optional[date] = None
+    department: Optional[str] = None
+    title: Optional[str] = None
 
 
 class UserRead(UserBase):
@@ -71,7 +75,7 @@ class TeacherRead(TeacherBase):
 # STUDENT SCHEMAS
 # -------------------------------
 class StudentBase(BaseModel):
-    student_code: str
+    student_code: Optional[str] = None
     birthdate: Optional[date] = None
 
 
@@ -166,6 +170,15 @@ class GradeUpdate(BaseModel):
 class GradeRead(GradeBase):
     grade_id: int
     updated_at: datetime
+
+    class Config:
+        orm_mode = True
+
+
+# Composite view for /me
+class MeRead(UserRead):
+    student_profile: Optional[StudentRead] = None
+    teacher_profile: Optional[TeacherRead] = None
 
     class Config:
         orm_mode = True
