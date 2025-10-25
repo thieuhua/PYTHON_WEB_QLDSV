@@ -1,197 +1,239 @@
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
+from fastapi import HTTPException
+from . import models, schemas
+from typing import List, Optional
 from datetime import date
+# from passlib.context import CryptContext
 
-from ..routers import schemas
-from . import models
-
-def get_items(db: Session, skip: int = 0, limit: int = 10):
-    return db.query(models.Item).offset(skip).limit(limit).all()
-
-def create_item(db: Session, item: schemas.ItemCreate):
-    db_item = models.Item(name=item.name, description=item.description)
-    db.add(db_item)
-    db.commit()
-    db.refresh(db_item)
-    return db_item
+# pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
-def create_user(db: Session, user: schemas.UserCreate):
-    
+# def hash_password(password: str) -> str:
+#     return pwd_context.hash(password)
+
+
+# def verify_password(plain_password, hashed_password) -> bool:
+#     return pwd_context.verify(plain_password, hashed_password)
+
+
+# ==============================================================
+# USER CRUD
+# ==============================================================
+
+def get_user(db: Session, user_id: int) -> Optional[models.User]:
+    return db.query(models.User).filter(models.User.user_id == user_id).first()
+
+
+def get_user_by_username(db: Session, username: str) -> Optional[models.User]:
+    return db.query(models.User).filter(models.User.username == username).first()
+
+
+def get_users(db: Session, skip: int = 0, limit: int = 100) -> List[models.User]:
+    return db.query(models.User).offset(skip).limit(limit).all()
+
+
+def create_user(db: Session, user: schemas.UserCreate) -> models.User:
     db_user = models.User(
         username=user.username,
         password=user.password,
+        full_name=user.full_name,
+        email=user.email,
         role=user.role,
-        name=user.name
     )
-    try:
-        db.add(db_user)
-        db.commit()
-        db.refresh(db_user)
-    except SQLAlchemyError as e:
-        db.rollback()
-        print("❌ Lỗi SQLAlchemy:", e)
-        raise
+    db.add(db_user)
+    db.flush()  # Để lấy user_id trước khi commit
 
+    # Tạo profile tương ứng với role
+    if user.role == models.UserRole.student and hasattr(user, 'student_code'):
+        student = models.Student(
+            student_id=db_user.user_id,
+            student_code=user.student_code,
+            birthdate=user.birthdate if hasattr(user, 'birthdate') else None
+        )
+        db.add(student)
+    
+    elif user.role == models.UserRole.teacher:
+        teacher = models.Teacher(
+            teacher_id=db_user.user_id,
+            department=user.department if hasattr(user, 'department') else None,
+            title=user.title if hasattr(user, 'title') else None
+        )
+        db.add(teacher)
+
+    db.commit()
+    db.refresh(db_user)
     return db_user
 
-def get_user(db: Session, user_id: int):
-    return db.query(models.User).filter(models.User.id == user_id).first()
 
-def get_user_by_username(db: Session, username: str):
-    return db.query(models.User).filter(models.User.username == username).first()
+# def update_user(db: Session, user_id: int, update_data: schemas.UserUpdate) -> models.User:
+#     db_user = get_user(db, user_id)
+#     if not db_user:
+#         raise HTTPException(status_code=404, detail="User not found")
 
-def get_users(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.User).offset(skip).limit(limit).all()
+#     for key, value in update_data.dict(exclude_unset=True).items():
+#         if key == "password" and value:
+#             setattr(db_user, key, hash_password(value))
+#         else:
+#             setattr(db_user, key, value)
 
-def update_user(db: Session, user_id: int, update_data: dict):
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user:
-        return None
-    for key, value in update_data.items():
-        setattr(user, key, value)
+#     db.commit()
+#     db.refresh(db_user)
+#     return db_user
+
+
+def delete_user(db: Session, user_id: int) -> None:
+    db_user = get_user(db, user_id)
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    db.delete(db_user)
     db.commit()
-    db.refresh(user)
-    return user
-
-def delete_user(db: Session, user_id: int):
-    user = db.query(models.User).filter(models.User.id == user_id).first()
-    if not user:
-        return None
-    db.delete(user)
-    db.commit()
-    return user
 
 
-# =======================
-# CRUD cho Course
-# =======================
-def create_course(db: Session, course: schemas.CourseCreate):
-    db_course = models.Course(
-        teacherId=course.teacherId,
-        courseName=course.courseName
+# ==============================================================
+# TEACHER CRUD
+# ==============================================================
+
+def create_teacher(db: Session, teacher: schemas.TeacherCreate) -> models.Teacher:
+    db_teacher = models.Teacher(
+        teacher_id=teacher.user_id,
+        department=teacher.department,
+        title=teacher.title,
     )
-    db.add(db_course)
+    db.add(db_teacher)
     db.commit()
-    db.refresh(db_course)
-    return db_course
-
-def get_course(db: Session, course_id: int):
-    return db.query(models.Course).filter(models.Course.courseId == course_id).first()
-
-def get_courses(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.Course).offset(skip).limit(limit).all()
-
-def update_course(db: Session, course_id: int, update_data: dict):
-    course = db.query(models.Course).filter(models.Course.courseId == course_id).first()
-    if not course:
-        return None
-    for key, value in update_data.items():
-        setattr(course, key, value)
-    db.commit()
-    db.refresh(course)
-    return course
-
-def delete_course(db: Session, course_id: int):
-    course = db.query(models.Course).filter(models.Course.courseId == course_id).first()
-    if not course:
-        return None
-    db.delete(course)
-    db.commit()
-    return course
+    db.refresh(db_teacher)
+    return db_teacher
 
 
-# =======================
-# CRUD cho Student
-# =======================
-def enroll_student(db: Session, student: schemas.StudentCreate):
+def get_teacher(db: Session, teacher_id: int) -> Optional[models.Teacher]:
+    return db.query(models.Teacher).filter(models.Teacher.teacher_id == teacher_id).first()
+
+
+def get_teachers(db: Session) -> List[models.Teacher]:
+    return db.query(models.Teacher).all()
+
+
+# ==============================================================
+# STUDENT CRUD
+# ==============================================================
+
+def create_student(db: Session, student: schemas.StudentCreate) -> models.Student:
     db_student = models.Student(
-        studentId=student.studentId,
-        courseId=student.courseId
+        student_id=student.user_id,
+        student_code=student.student_code,
+        birthdate=student.birthdate,
     )
     db.add(db_student)
     db.commit()
     db.refresh(db_student)
     return db_student
 
-def get_students_by_course(db: Session, course_id: int):
-    return db.query(models.Student).filter(models.Student.courseId == course_id).all()
 
-def get_student(db: Session, student_id: int):
-    return db.query(models.Student).filter(models.Student.id == student_id).first()
-
-def remove_student(db: Session, student_id: int):
-    student = db.query(models.Student).filter(models.Student.id == student_id).first()
-    if not student:
-        return None
-    db.delete(student)
-    db.commit()
-    return student
+def get_student(db: Session, student_id: int) -> Optional[models.Student]:
+    return db.query(models.Student).filter(models.Student.student_id == student_id).first()
 
 
-# =======================
-# CRUD cho Baithi
-# =======================
-def create_baithi(db: Session, baithi: schemas.BaithiCreate):
-    db_bt = models.Baithi(
-        tenBaiThi=baithi.tenBaiThi,
-        courseId=baithi.courseId
+def get_students(db: Session) -> List[models.Student]:
+    return db.query(models.Student).all()
+
+
+# ==============================================================
+# CLASS CRUD
+# ==============================================================
+
+def create_class(db: Session, class_: schemas.ClassCreate) -> models.Class:
+    db_class = models.Class(
+        class_name=class_.class_name,
+        year=class_.year,
+        semester=class_.semester,
     )
-    db.add(db_bt)
+    db.add(db_class)
     db.commit()
-    db.refresh(db_bt)
-    return db_bt
-
-def get_baithi_by_course(db: Session, course_id: int):
-    return db.query(models.Baithi).filter(models.Baithi.courseId == course_id).all()
-
-def get_baithi(db: Session, idBaithi: int):
-    return db.query(models.Baithi).filter(models.Baithi.idBaithi == idBaithi).first()
-
-def delete_baithi(db: Session, idBaithi: int):
-    bt = db.query(models.Baithi).filter(models.Baithi.idBaithi == idBaithi).first()
-    if not bt:
-        return None
-    db.delete(bt)
-    db.commit()
-    return bt
+    db.refresh(db_class)
+    return db_class
 
 
-# =======================
-# CRUD cho DiemThi
-# =======================
-def create_diemthi(db: Session, diem: schemas.DiemThiCreate):
-    db_diem = models.DiemThi(
-        idBaithi=diem.idBaithi,
-        studentId=diem.studentId,
-        date=diem.date or date.today(),
-        grade=diem.grade
+def get_class(db: Session, class_id: int) -> Optional[models.Class]:
+    return db.query(models.Class).filter(models.Class.class_id == class_id).first()
+
+
+def get_classes(db: Session) -> List[models.Class]:
+    return db.query(models.Class).all()
+
+
+# ==============================================================
+# ENROLLMENT (Student-Class)
+# ==============================================================
+
+def enroll_student(db: Session, enrollment: schemas.EnrollmentCreate) -> models.Enrollment:
+    db_enroll = models.Enrollment(
+        student_id=enrollment.student_id,
+        class_id=enrollment.class_id,
+        enroll_date=date.today()
     )
-    db.add(db_diem)
+    db.add(db_enroll)
     db.commit()
-    db.refresh(db_diem)
-    return db_diem
+    db.refresh(db_enroll)
+    return db_enroll
 
-def get_diemthi_by_student(db: Session, student_id: int):
-    return db.query(models.DiemThi).filter(models.DiemThi.studentId == student_id).all()
 
-def get_diemthi_by_baithi(db: Session, idBaithi: int):
-    return db.query(models.DiemThi).filter(models.DiemThi.idBaithi == idBaithi).all()
+def get_enrollments(db: Session) -> List[models.Enrollment]:
+    return db.query(models.Enrollment).all()
 
-def update_diemthi(db: Session, diem_id: int, update_data: dict):
-    diem = db.query(models.DiemThi).filter(models.DiemThi.id == diem_id).first()
-    if not diem:
-        return None
-    for key, value in update_data.items():
-        setattr(diem, key, value)
+
+# ==============================================================
+# TEACHING ASSIGNMENT (Teacher-Class)
+# ==============================================================
+
+def assign_teacher(db: Session, assign: schemas.TeachingAssignmentCreate) -> models.TeachingAssignment:
+    db_assign = models.TeachingAssignment(
+        teacher_id=assign.teacher_id,
+        class_id=assign.class_id,
+        assigned_date=date.today()
+    )
+    db.add(db_assign)
     db.commit()
-    db.refresh(diem)
-    return diem
+    db.refresh(db_assign)
+    return db_assign
 
-def delete_diemthi(db: Session, diem_id: int):
-    diem = db.query(models.DiemThi).filter(models.DiemThi.id == diem_id).first()
-    if not diem:
-        return None
-    db.delete(diem)
+
+def get_assignments(db: Session) -> List[models.TeachingAssignment]:
+    return db.query(models.TeachingAssignment).all()
+
+
+# ==============================================================
+# GRADE CRUD
+# ==============================================================
+
+def create_grade(db: Session, grade: schemas.GradeCreate) -> models.Grade:
+    db_grade = models.Grade(
+        student_id=grade.student_id,
+        class_id=grade.class_id,
+        subject=grade.subject,
+        score=grade.score,
+    )
+    db.add(db_grade)
     db.commit()
-    return diem
+    db.refresh(db_grade)
+    return db_grade
+
+
+def update_grade(db: Session, grade_id: int, data: schemas.GradeUpdate) -> models.Grade:
+    db_grade = db.query(models.Grade).filter(models.Grade.grade_id == grade_id).first()
+    if not db_grade:
+        raise HTTPException(status_code=404, detail="Grade not found")
+
+    for key, value in data.dict(exclude_unset=True).items():
+        setattr(db_grade, key, value)
+
+    db.commit()
+    db.refresh(db_grade)
+    return db_grade
+
+
+def get_grades_by_student(db: Session, student_id: int) -> List[models.Grade]:
+    return db.query(models.Grade).filter(models.Grade.student_id == student_id).all()
+
+
+def get_grades_by_class(db: Session, class_id: int) -> List[models.Grade]:
+    return db.query(models.Grade).filter(models.Grade.class_id == class_id).all()

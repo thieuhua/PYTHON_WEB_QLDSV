@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from . import schemas
+from ..db import schemas
 from ..db import crud, models, database
 from . import jwt_auth
 router = APIRouter()
@@ -21,16 +21,15 @@ def get_db():
 @router.post("/register")
 def register(user: UserAuth, db: Session = Depends(get_db)):
     hashedpassw: str = jwt_auth.hash_password(user.password)
-    user_db = schemas.UserCreate(username=user.username, password=hashedpassw)
+    user_db = schemas.UserCreate(username=user.username, password=hashedpassw, full_name= "NoName")
     try:
         crud.create_user(db, user_db)
     except Exception as e:
-        print("❌ Lỗi khi tạo user:", e)
+        print("Lỗi khi tạo user:", e)
         raise HTTPException(400) # Bad request
     
     token = jwt_auth.create_token({"username": user_db.username, "password": user_db.password})
     
-    # SỬA: Trả về JSON thay vì text
     return {
         "token": token, 
         "message": "Đăng ký thành công",
@@ -40,12 +39,12 @@ def register(user: UserAuth, db: Session = Depends(get_db)):
 @router.post("/login")
 def login(user: UserAuth, db: Session = Depends(get_db)):
     print("user:", user.username, user.password)
-    user_db : schemas.UserOut = crud.get_user_by_username(db, user.username)
+    user_db = crud.get_user_by_username(db, user.username)
     ok = jwt_auth.verify_password(user.password, user_db.password)
     if not ok: 
         raise HTTPException(401) # Unauthorized
     
-    token = jwt_auth.create_token({"username": user_db.username, "id": user_db.id})
+    token = jwt_auth.create_token({"username": user_db.username, "id": user_db.user_id})
     print("Generated token:", token)
     
     # SỬA: Trả về JSON thay vì text
@@ -55,15 +54,12 @@ def login(user: UserAuth, db: Session = Depends(get_db)):
         "username": user.username
     }
 
-@router.get("/me")
+@router.get("/me", response_model=schemas.UserRead)
 def getMe(user: dict = Depends(jwt_auth.auth), db: Session = Depends(get_db)):
     db_user = crud.get_user_by_username(db, user['username'])
-    userinf = schemas.UserBase(
-        username=db_user.username,
-        role=db_user.role,
-        name=db_user.name
-    )
-    return userinf.__dict__
+    if not db_user:
+        raise HTTPException(404, detail="User not found")
+    return db_user
 
 class UpdateRoleRequest(BaseModel):
     username: str
@@ -91,10 +87,10 @@ def debug_all_users(db: Session = Depends(get_db)):
     result = []
     for user in users:
         result.append({
-            "id": user.id,
+            "id": user.user_id,
             "username": user.username,
             "role": user.role.value if user.role else None,
-            "name": user.name
+            "name": user.full_name
         })
     return result
 @router.get("/check-auth")

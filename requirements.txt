@@ -4,3 +4,4 @@ sqlalchemy
 pydantic
 python-dotenv
 python-jose[cryptography]
+pydantic[email]
