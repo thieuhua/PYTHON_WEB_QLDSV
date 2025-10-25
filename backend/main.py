@@ -4,6 +4,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse  # Th
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 from .db import models, database
+
 from .routers import mainrouter
 from .routers import jwt_auth
 
