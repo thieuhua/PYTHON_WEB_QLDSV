@@ -58,10 +58,26 @@ def login(user: UserAuth, db: Session = Depends(get_db)):
 
 @router.get("/me", response_model=schemas.UserRead)
 def getMe(user: dict = Depends(jwt_auth.auth), db: Session = Depends(get_db)):
-    db_user = crud.get_user_by_username(db, user['username'])
+    """Return current authenticated user with related profiles (student_profile / teacher_profile)."""
+    db_user = crud.get_user_by_username(db, user.get('username'))
     if not db_user:
         raise HTTPException(404, detail="User not found")
-    # data = update.dict(exclude_unset=True)
+    # Ensure relationships are loaded (SQLAlchemy lazy load will handle when accessed)
+    return db_user
+
+
+@router.put("/me", response_model=schemas.MeRead)
+def update_me(update: schemas.UserUpdate, user: dict = Depends(jwt_auth.auth), db: Session = Depends(get_db)):
+    """Update current user's profile and related student/teacher records.
+
+    - Updates fields on users (full_name, email, password, role)
+    - If the user is a student, updates/creates student profile (birthdate)
+    - If the user is a teacher, updates/creates teacher profile (department, title)
+    """
+    db_user = crud.get_user_by_username(db, user.get('username'))
+    if not db_user:
+        raise HTTPException(404, detail="User not found")
+
     data = update.model_dump(exclude_unset=True)
 
     # Password handling
@@ -115,6 +131,7 @@ def getMe(user: dict = Depends(jwt_auth.auth), db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_user)
     return db_user
+
 
 class UpdateRoleRequest(BaseModel):
     username: str
