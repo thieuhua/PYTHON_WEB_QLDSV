@@ -123,7 +123,7 @@ def get_student_statistics(
 # ✅ Lấy tất cả lớp học (dành cho admin/teacher)
 @router.get("/classes")
 def get_all_classes(
-    db: Session = Depends(database.database.get_db),
+    db: Session = Depends(database.get_db),
     user: dict = Depends(jwt_auth.auth)
 ):
     """Lấy danh sách tất cả lớp học"""
@@ -148,7 +148,7 @@ def test_student():
 
 
 @router.get("/all")
-def get_all_students(db: Session = Depends(database.database.get_db)):
+def get_all_students(db: Session = Depends(database.get_db)):
     students = db.query(models.Student).all()
     return students
 
@@ -163,7 +163,7 @@ def get_student_by_id(student_id: int, db: Session = Depends(database.get_db)):
 
 # ✅ Thêm sinh viên mới
 @router.post("/add")
-def add_student(student: schemas.StudentCreate, db: Session = Depends(database.database.get_db)):
+def add_student(student: schemas.StudentCreate, db: Session = Depends(database.get_db)):
     new_student = models.Student(
         username=student.username,
         password=student.password,
