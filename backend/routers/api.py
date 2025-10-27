@@ -40,7 +40,9 @@ def register(user: UserAuth, db: Session = Depends(get_db)):
 def login(user: UserAuth, db: Session = Depends(get_db)):
     print("user:", user.username, user.password)
     user_db = crud.get_user_by_username(db, user.username)
+    
     ok = jwt_auth.verify_password(user.password, user_db.password)
+  
     if not ok: 
         raise HTTPException(401) # Unauthorized
     
@@ -54,80 +56,11 @@ def login(user: UserAuth, db: Session = Depends(get_db)):
         "username": user.username
     }
 
-@router.get("/me", response_model=schemas.MeRead)
+@router.get("/me", response_model=schemas.UserRead)
 def getMe(user: dict = Depends(jwt_auth.auth), db: Session = Depends(get_db)):
-    """Return current authenticated user with related profiles (student_profile / teacher_profile)."""
-    db_user = crud.get_user_by_username(db, user.get('username'))
+    db_user = crud.get_user_by_username(db, user['username'])
     if not db_user:
         raise HTTPException(404, detail="User not found")
-    # Ensure relationships are loaded (SQLAlchemy lazy load will handle when accessed)
-    return db_user
-
-
-@router.put("/me", response_model=schemas.MeRead)
-def update_me(update: schemas.UserUpdate, user: dict = Depends(jwt_auth.auth), db: Session = Depends(get_db)):
-    """Update current user's profile and related student/teacher records.
-
-    - Updates fields on users (full_name, email, password, role)
-    - If the user is a student, updates/creates student profile (birthdate)
-    - If the user is a teacher, updates/creates teacher profile (department, title)
-    """
-    db_user = crud.get_user_by_username(db, user.get('username'))
-    if not db_user:
-        raise HTTPException(404, detail="User not found")
-
-    data = update.dict(exclude_unset=True)
-
-    # Password handling
-    if 'password' in data and data['password']:
-        db_user.password = jwt_auth.hash_password(data.pop('password'))
-
-    # Update simple user fields
-    for field in ['full_name', 'email', 'role']:
-        if field in data:
-            setattr(db_user, field, data.pop(field))
-
-    # Handle student profile
-    # Determine effective role (new role if provided, else existing)
-    effective_role = getattr(db_user.role, 'value', db_user.role) if hasattr(db_user.role, 'value') else db_user.role
-    if 'role' in update.__fields_set__:
-        # if role was changed in update, re-evaluate effective_role
-        effective_role = update.role.value if hasattr(update.role, 'value') else update.role
-
-    if str(effective_role) == 'student':
-        student = crud.get_student(db, db_user.user_id)
-        if student:
-            if 'birthdate' in data:
-                student.birthdate = data.pop('birthdate')
-        else:
-            # create student; student_code optional — generate fallback if not provided
-            student_code = data.pop('student_code', None) if 'student_code' in data else None
-            if not student_code:
-                student_code = f"ST{db_user.user_id:04d}"
-            sc = schemas.StudentCreate(user_id=db_user.user_id, student_code=student_code, birthdate=data.pop('birthdate', None))
-            try:
-                crud.create_student(db, sc)
-            except Exception as e:
-                raise HTTPException(status_code=400, detail=f"Failed to create student profile: {e}")
-
-    # Handle teacher profile
-    if str(effective_role) == 'teacher':
-        teacher = crud.get_teacher(db, db_user.user_id)
-        if teacher:
-            if 'department' in data:
-                teacher.department = data.pop('department')
-            if 'title' in data:
-                teacher.title = data.pop('title')
-        else:
-            tc = schemas.TeacherCreate(user_id=db_user.user_id, department=data.pop('department', None), title=data.pop('title', None))
-            try:
-                crud.create_teacher(db, tc)
-            except Exception as e:
-                raise HTTPException(status_code=400, detail=f"Failed to create teacher profile: {e}")
-
-    # Commit changes
-    db.commit()
-    db.refresh(db_user)
     return db_user
 
 class UpdateRoleRequest(BaseModel):
@@ -165,3 +98,46 @@ def debug_all_users(db: Session = Depends(get_db)):
 @router.get("/check-auth")
 def check_auth(user: dict = Depends(jwt_auth.auth)):
     return {"authenticated": True, "user": user}
+
+# ==============================================================
+# THÊM 3 API ENDPOINTS NÀY VÀO CUỐI FILE api.py
+# ==============================================================
+
+@router.get("/students/{student_id}/enrollments", response_model=list[schemas.EnrollmentRead])
+def get_student_enrollments_api(student_id: int, db: Session = Depends(get_db)):
+    """Lấy danh sách các lớp học mà sinh viên đã đăng ký"""
+    enrollments = crud.get_student_enrollments(db, student_id)
+    return enrollments
+
+
+@router.get("/classes/{class_id}", response_model=schemas.ClassRead)
+def get_class_detail(class_id: int, db: Session = Depends(get_db)):
+    """Lấy thông tin chi tiết của một lớp học"""
+    class_obj = crud.get_class(db, class_id)
+    
+    if not class_obj:
+        raise HTTPException(status_code=404, detail="Không tìm thấy lớp học")
+    
+    return class_obj
+
+
+@router.get("/students/{student_id}/grades", response_model=list[schemas.GradeRead])
+def get_student_grades_api(
+    student_id: int,
+    class_id: int = None,
+    db: Session = Depends(get_db)
+):
+    """
+    Lấy điểm của sinh viên, có thể lọc theo lớp
+    
+    Query params:
+    - class_id: (Optional) Lọc điểm theo lớp học
+    """
+    grades = crud.get_student_grades(db, student_id, class_id)
+    return grades
+
+@router.get("/students/{student_id}/enrollments", response_model=list[schemas.EnrollmentRead])
+def get_student_enrollments_api(student_id: int, db: Session = Depends(get_db)):
+    """Lấy danh sách các lớp học mà sinh viên đã đăng ký"""
+    enrollments = crud.get_student_enrollments(db, student_id)
+    return enrollments
