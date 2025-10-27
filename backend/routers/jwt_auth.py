@@ -3,6 +3,9 @@ from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status, Request  # Thêm Request
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
+from sqlalchemy.orm import Session
+from ..db import models, database
+
 
 from bcrypt import checkpw, hashpw, gensalt
 
@@ -67,4 +70,43 @@ async def auth_request(request: Request = None, token: str = None):
     if not user:
         raise HTTPException(status_code=401, detail="Invalid token")
     
+    return user
+    def get_db():
+    db = database.SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+async def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    """Lấy thông tin user hiện tại từ token"""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    try:
+        # Decode token bằng function có sẵn
+        payload = decode_tokenNE(token.strip("\""))
+        if payload is None:
+            raise credentials_exception
+
+        # Lấy user_id từ payload
+        user_id = payload.get("sub") or payload.get("user_id") or payload.get("id")
+        if user_id is None:
+            raise credentials_exception
+
+    except Exception as e:
+        print(f"Token decode error: {e}")
+        raise credentials_exception
+
+    # Query user từ database
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if user is None:
+        raise credentials_exception
+
     return user
