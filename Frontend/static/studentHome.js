@@ -42,7 +42,7 @@ function showNotification(message, isError = false) {
 // ===== 1. LẤY THÔNG TIN SINH VIÊN HIỆN TẠI =====
 async function fetchCurrentUser() {
     try {
-        const response = await fetch(`${API_BASE_URL}/me`, {
+        const response = await fetch(`/api/me`, {
             headers: getAuthHeaders()
         });
         

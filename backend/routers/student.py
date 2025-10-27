@@ -7,20 +7,17 @@ router = APIRouter(
     tags=["Student"]
 )
 
-# ✅ Test route
 @router.get("/test")
 def test_student():
     return {"message": "Student router connected!"}
 
 
-# ✅ Lấy tất cả sinh viên
 @router.get("/all")
 def get_all_students(db: Session = Depends(database.get_db)):
     students = db.query(models.Student).all()
     return students
 
 
-# ✅ Lấy sinh viên theo ID
 @router.get("/{student_id}")
 def get_student_by_id(student_id: int, db: Session = Depends(database.get_db)):
     student = db.query(models.Student).filter(models.Student.id == student_id).first()
@@ -29,7 +26,6 @@ def get_student_by_id(student_id: int, db: Session = Depends(database.get_db)):
     return student
 
 
-# ✅ Thêm sinh viên mới
 @router.post("/add")
 def add_student(student: schemas.StudentCreate, db: Session = Depends(database.get_db)):
     new_student = models.Student(
@@ -44,3 +40,4 @@ def add_student(student: schemas.StudentCreate, db: Session = Depends(database.g
     db.commit()
     db.refresh(new_student)
     return {"message": "Student added successfully!", "student": new_student}
+

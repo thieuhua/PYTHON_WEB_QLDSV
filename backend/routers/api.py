@@ -75,8 +75,8 @@ def update_me(update: schemas.UserUpdate, user: dict = Depends(jwt_auth.auth), d
     db_user = crud.get_user_by_username(db, user.get('username'))
     if not db_user:
         raise HTTPException(404, detail="User not found")
-
-    data = update.dict(exclude_unset=True)
+    # data = update.dict(exclude_unset=True)
+    data = update.model_dump(exclude_unset=True)
 
     # Password handling
     if 'password' in data and data['password']:

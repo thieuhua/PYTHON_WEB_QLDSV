@@ -1,273 +1,179 @@
+# backend/db/teacher_crud.py
+from typing import List, Dict, Optional, Tuple
+import secrets
 from sqlalchemy.orm import Session
-from sqlalchemy import func
-from typing import List, Optional
-from fastapi import HTTPException
+from sqlalchemy import and_
 
-from . import models, schemas, teacher_schemas
-from datetime import datetime
+from . import models, schemas, crud  # assumes crud.get_user_by_username and crud.create_user exist
+from .database import SessionLocal
 
+# --- Helper ---
+def _ensure_student_profile(db: Session, user):
+    """Ensure a Student row exists for a User; return Student model."""
+    student = db.query(models.Student).filter(models.Student.student_id == user.user_id).first()
+    if not student:
+        student = models.Student(student_id=user.user_id, student_code=getattr(user, 'student_code', None))
+        db.add(student)
+        db.commit()
+        db.refresh(student)
+    return student
+
+# --- Get classes that a teacher is assigned to ---
 def get_teacher_classes(db: Session, teacher_id: int) -> List[models.Class]:
-    """Lấy danh sách các lớp học mà giáo viên phụ trách"""
-    return (db.query(models.Class)
-            .join(models.TeachingAssignment)
-            .filter(models.TeachingAssignment.teacher_id == teacher_id)
-            .all())
-
-def create_class(
-    db: Session, 
-    teacher_id: int,
-    class_data: teacher_schemas.TeacherClassCreate
-) -> models.Class:
-    """Tạo lớp học mới và gán cho giáo viên"""
-    # Tạo lớp học
-    db_class = models.Class(
-        class_name=class_data.class_name,
-        year=class_data.year,
-        semester=class_data.semester
+    """
+    Return list of Class models assigned to teacher_id via TeachingAssignment.
+    """
+    classes = (
+        db.query(models.Class)
+        .join(models.TeachingAssignment, models.Class.class_id == models.TeachingAssignment.class_id)
+        .filter(models.TeachingAssignment.teacher_id == teacher_id)
+        .all()
     )
-    db.add(db_class)
-    db.flush()  # Để lấy class_id
+    return classes
 
-    # Tạo assignment cho giáo viên
-    db_assignment = models.TeachingAssignment(
-        teacher_id=teacher_id,
-        class_id=db_class.class_id
+# --- Create a class and assign to teacher ---
+def create_class_for_teacher(db: Session, teacher_id: int, class_in: schemas.ClassCreate) -> models.Class:
+    new_class = models.Class(
+        class_name=class_in.class_name,
+        year=class_in.year,
+        semester=class_in.semester
     )
-    db.add(db_assignment)
-    
+    db.add(new_class)
     db.commit()
-    db.refresh(db_class)
-    return db_class
+    db.refresh(new_class)
 
-def get_class_details(
-    db: Session, 
-    class_id: int, 
-    teacher_id: int
-) -> Optional[teacher_schemas.ClassDetails]:
-    """Lấy chi tiết lớp học bao gồm danh sách sinh viên và điểm"""
-    # Kiểm tra quyền truy cập
-    assignment = (db.query(models.TeachingAssignment)
-                 .filter(models.TeachingAssignment.class_id == class_id,
-                        models.TeachingAssignment.teacher_id == teacher_id)
-                 .first())
-    if not assignment:
-        raise HTTPException(status_code=403, detail="Không có quyền truy cập lớp học này")
+    # create teaching assignment
+    ta = models.TeachingAssignment(teacher_id=teacher_id, class_id=new_class.class_id)
+    db.add(ta)
+    db.commit()
+    return new_class
 
-    # Lấy thông tin lớp
-    db_class = db.query(models.Class).get(class_id)
-    if not db_class:
-        raise HTTPException(status_code=404, detail="Không tìm thấy lớp học")
+# --- Get detailed class info: class + enrolled students + grades ---
+def get_class_detail(db: Session, class_id: int) -> Optional[Dict]:
+    cls = db.query(models.Class).filter(models.Class.class_id == class_id).first()
+    if not cls:
+        return None
 
-    # Lấy sinh viên và điểm
-    students_with_grades = (
-        db.query(models.Student, models.Grade)
-        .join(models.Enrollment)
-        .outerjoin(models.Grade)
+    # students via enrollments
+    enroll_rows = (
+        db.query(models.Enrollment, models.Student, models.User)
+        .join(models.Student, models.Enrollment.student_id == models.Student.student_id)
+        .join(models.User, models.User.user_id == models.Student.student_id)
         .filter(models.Enrollment.class_id == class_id)
         .all()
     )
 
-    # Đếm số sinh viên hiện tại
-    current_students = (db.query(func.count(models.Enrollment.student_id))
-                       .filter(models.Enrollment.class_id == class_id)
-                       .scalar())
+    # fetch all grades for this class
+    grade_rows = db.query(models.Grade).filter(models.Grade.class_id == class_id).all()
+    # build mapping (student_id -> { subject: score, ... })
+    grade_map = {}
+    for g in grade_rows:
+        grade_map.setdefault(g.student_id, {})[g.subject] = g.score
 
-    # Chuyển đổi sang ClassDetails
-    result = teacher_schemas.ClassDetails(
-        **db_class.__dict__,
-        current_students=current_students,
-        max_students=0,  # Cần thêm trường này vào models.Class
-        students=[]
-    )
+    students = []
+    for enroll, student, user in enroll_rows:
+        g = grade_map.get(student.student_id, {})
+        students.append({
+            "student_id": student.student_id,
+            "full_name": user.full_name or user.username,
+            "student_code": student.student_code,
+            # Map to the three fields expected by the frontend (attendance, mid, final).
+            # If you support arbitrary subjects later, adapt frontend or return list form.
+            "grades": {
+                "attendance": g.get("attendance", "") if g.get("attendance", None) is not None else "",
+                "mid": g.get("mid", "") if g.get("mid", None) is not None else "",
+                "final": g.get("final", "") if g.get("final", None) is not None else ""
+            }
+        })
 
-    # Thêm thông tin sinh viên và điểm
-    for student, grade in students_with_grades:
-        result.students.append(
-            teacher_schemas.StudentGrade(
-                student=student,
-                grades=grade if grade else None
-            )
-        )
-
+    result = {
+        "class_id": cls.class_id,
+        "class_name": cls.class_name,
+        "year": cls.year,
+        "semester": cls.semester,
+        # optional: expose max_students or other metadata; if not in model you can set None
+        "max_students": getattr(cls, "max_students", None),
+        "students": students
+    }
     return result
 
-def update_class(
-    db: Session,
-    class_id: int,
-    teacher_id: int,
-    update_data: teacher_schemas.TeacherClassUpdate
-) -> models.Class:
-    """Cập nhật thông tin lớp học"""
-    # Kiểm tra quyền
-    assignment = (db.query(models.TeachingAssignment)
-                 .filter(models.TeachingAssignment.class_id == class_id,
-                        models.TeachingAssignment.teacher_id == teacher_id)
-                 .first())
-    if not assignment:
-        raise HTTPException(status_code=403, detail="Không có quyền sửa lớp học này")
+# --- Add (or create) a student and enroll into class ---
+def add_student_to_class(db: Session, class_id: int, full_name: str, student_code: str) -> Dict:
+    """
+    If user with username==student_code exists -> ensure Student profile and Enrollment.
+    Else create a new User (student) and Student profile, then Enrollment.
+    Returns a dict with minimal student info.
+    """
+    # Try find user by username (we assume username = student_code)
+    user = crud.get_user_by_username(db, student_code)
+    if not user:
+        # create user with random password; crud.create_user should handle student_profile fields if supported
+        temp_pass = secrets.token_urlsafe(8)
+        uc = schemas.UserCreate(
+            username=student_code,
+            password=temp_pass,
+            full_name=full_name,
+            email=None,
+            role=schemas.UserRole.student,
+            student_code=student_code
+        )
+        user = crud.create_user(db, uc)
 
-    # Cập nhật
-    db_class = db.query(models.Class).get(class_id)
-    if not db_class:
-        raise HTTPException(status_code=404, detail="Không tìm thấy lớp học")
-
-    for key, value in update_data.dict(exclude_unset=True).items():
-        setattr(db_class, key, value)
-
-    db.commit()
-    db.refresh(db_class)
-    return db_class
-
-def delete_class(db: Session, class_id: int, teacher_id: int) -> None:
-    """Xóa lớp học (chỉ khi chưa có sinh viên đăng ký)"""
-    # Kiểm tra quyền
-    assignment = (db.query(models.TeachingAssignment)
-                 .filter(models.TeachingAssignment.class_id == class_id,
-                        models.TeachingAssignment.teacher_id == teacher_id)
-                 .first())
-    if not assignment:
-        raise HTTPException(status_code=403, detail="Không có quyền xóa lớp học này")
-
-    # Kiểm tra có sinh viên không
-    has_students = db.query(models.Enrollment).filter_by(class_id=class_id).first()
-    if has_students:
-        raise HTTPException(status_code=400, detail="Không thể xóa lớp đã có sinh viên")
-
-    # Xóa assignment trước
-    db.delete(assignment)
-    
-    # Xóa lớp
-    db_class = db.query(models.Class).get(class_id)
-    if db_class:
-        db.delete(db_class)
-        db.commit()
-
-def add_student_to_class(
-    db: Session,
-    class_id: int,
-    teacher_id: int,
-    student_data: teacher_schemas.StudentEnrollment
-) -> models.Student:
-    """Thêm sinh viên vào lớp"""
-    # Kiểm tra quyền
-    assignment = (db.query(models.TeachingAssignment)
-                 .filter(models.TeachingAssignment.class_id == class_id,
-                        models.TeachingAssignment.teacher_id == teacher_id)
-                 .first())
-    if not assignment:
-        raise HTTPException(status_code=403, detail="Không có quyền thêm sinh viên vào lớp này")
-
-    # Tìm sinh viên theo mã
-    student = (db.query(models.Student)
-              .join(models.User)
-              .filter(models.Student.student_code == student_data.student_code)
-              .first())
-
+    # ensure student profile exists
+    student = db.query(models.Student).filter(models.Student.student_id == user.user_id).first()
     if not student:
-        # Tạo user mới
-        new_user = models.User(
-            username=student_data.student_code,  # Dùng mã SV làm username
-            password="password123",  # Cần hash và tạo mật khẩu ngẫu nhiên
-            full_name=student_data.full_name,
-            role=models.UserRole.student
-        )
-        db.add(new_user)
-        db.flush()
-
-        # Tạo student profile
-        student = models.Student(
-            student_id=new_user.user_id,
-            student_code=student_data.student_code
-        )
+        student = models.Student(student_id=user.user_id, student_code=student_code)
         db.add(student)
-        db.flush()
+        db.commit()
+        db.refresh(student)
 
-    # Kiểm tra đã đăng ký chưa
-    existing = (db.query(models.Enrollment)
-               .filter_by(student_id=student.student_id, class_id=class_id)
-               .first())
-    if existing:
-        raise HTTPException(status_code=400, detail="Sinh viên đã đăng ký lớp này")
-
-    # Thêm vào lớp
-    enrollment = models.Enrollment(
-        student_id=student.student_id,
-        class_id=class_id
-    )
-    db.add(enrollment)
-    db.commit()
-
-    return student
-
-def remove_student_from_class(
-    db: Session,
-    class_id: int,
-    teacher_id: int,
-    student_id: int
-) -> None:
-    """Xóa sinh viên khỏi lớp"""
-    # Kiểm tra quyền
-    assignment = (db.query(models.TeachingAssignment)
-                 .filter(models.TeachingAssignment.class_id == class_id,
-                        models.TeachingAssignment.teacher_id == teacher_id)
-                 .first())
-    if not assignment:
-        raise HTTPException(status_code=403, detail="Không có quyền xóa sinh viên khỏi lớp này")
-
-    # Xóa enrollment
-    enrollment = (db.query(models.Enrollment)
-                 .filter_by(student_id=student_id, class_id=class_id)
-                 .first())
-    if enrollment:
-        # Xóa điểm nếu có
-        db.query(models.Grade).filter_by(
-            student_id=student_id,
-            class_id=class_id
-        ).delete()
-        
-        db.delete(enrollment)
+    # ensure enrollment
+    enrollment = db.query(models.Enrollment).filter(
+        models.Enrollment.class_id == class_id,
+        models.Enrollment.student_id == student.student_id
+    ).first()
+    if not enrollment:
+        enrollment = models.Enrollment(student_id=student.student_id, class_id=class_id)
+        db.add(enrollment)
         db.commit()
 
-def update_student_grades(
-    db: Session,
-    class_id: int,
-    teacher_id: int,
-    student_id: int,
-    grades: teacher_schemas.GradeUpdate
-) -> models.Grade:
-    """Cập nhật điểm cho sinh viên"""
-    # Kiểm tra quyền
-    assignment = (db.query(models.TeachingAssignment)
-                 .filter(models.TeachingAssignment.class_id == class_id,
-                        models.TeachingAssignment.teacher_id == teacher_id)
-                 .first())
-    if not assignment:
-        raise HTTPException(status_code=403, detail="Không có quyền cập nhật điểm")
+    return {
+        "student_id": student.student_id,
+        "full_name": user.full_name or user.username,
+        "student_code": student.student_code
+    }
 
-    # Kiểm tra sinh viên có trong lớp không
-    enrollment = (db.query(models.Enrollment)
-                 .filter_by(student_id=student_id, class_id=class_id)
-                 .first())
+# --- Remove (unenroll) a student from class ---
+def remove_student_from_class(db: Session, class_id: int, student_id: int) -> bool:
+    enrollment = db.query(models.Enrollment).filter(
+        models.Enrollment.class_id == class_id,
+        models.Enrollment.student_id == student_id
+    ).first()
     if not enrollment:
-        raise HTTPException(status_code=404, detail="Sinh viên không có trong lớp này")
-
-    # Lấy hoặc tạo bản ghi điểm
-    grade = (db.query(models.Grade)
-            .filter_by(student_id=student_id, class_id=class_id)
-            .first())
-            
-    if not grade:
-        grade = models.Grade(
-            student_id=student_id,
-            class_id=class_id
-        )
-        db.add(grade)
-
-    # Cập nhật điểm
-    grade_data = grades.dict(exclude_unset=True)
-    for field, value in grade_data.items():
-        setattr(grade, field, value)
-
+        return False
+    db.delete(enrollment)
     db.commit()
-    db.refresh(grade)
-    return grade
+    return True
+
+# --- Save or update grades for a class ---
+def save_grades(db: Session, class_id: int, grades: List[Dict]) -> None:
+    """
+    grades: list of { student_id, subject, score }
+    Subject expected: "attendance", "mid", "final" (matching frontend).
+    """
+    for g in grades:
+        student_id = int(g["student_id"])
+        subject = str(g["subject"])
+        score = float(g["score"])
+
+        existing = db.query(models.Grade).filter(
+            models.Grade.class_id == class_id,
+            models.Grade.student_id == student_id,
+            models.Grade.subject == subject
+        ).first()
+        if existing:
+            existing.score = score
+        else:
+            newg = models.Grade(student_id=student_id, class_id=class_id, subject=subject, score=score)
+            db.add(newg)
+    db.commit()
