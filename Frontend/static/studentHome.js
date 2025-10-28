@@ -84,18 +84,7 @@ function renderStudentInfo(userData) {
         
         document.getElementById('student-class').textContent = 'Sinh viên';
     } 
-    // Nếu là giáo viên (cho phép test)
-    else if (userData.role === 'teacher' && userData.teacher_profile) {
-        document.getElementById('student-id').textContent = `GV${userData.teacher_profile.teacher_id}`;
-        document.getElementById('birth-date').textContent = userData.teacher_profile.title || 'Giảng viên';
-        document.getElementById('student-class').textContent = userData.teacher_profile.department || 'N/A';
-    }
-    // Admin hoặc role khác
-    else {
-        document.getElementById('student-id').textContent = userData.username;
-        document.getElementById('birth-date').textContent = userData.role;
-        document.getElementById('student-class').textContent = 'N/A';
-    }
+    
 }
 
 // ===== 3. LẤY DANH SÁCH LỚP HỌC =====
