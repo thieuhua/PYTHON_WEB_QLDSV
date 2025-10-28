@@ -7,6 +7,17 @@ from datetime import date
 # ==============================================================
 # USER CRUD
 # ==============================================================
+# from passlib.context import CryptContext
+
+# pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
+# def hash_password(password: str) -> str:
+#     return pwd_context.hash(password)
+
+
+# def verify_password(plain_password, hashed_password) -> bool:
+#     return pwd_context.verify(plain_password, hashed_password)
 
 def get_user(db: Session, user_id: int) -> Optional[models.User]:
     return db.query(models.User).filter(models.User.user_id == user_id).first()
@@ -18,6 +29,21 @@ def get_user_by_username(db: Session, username: str) -> Optional[models.User]:
 
 def get_users(db: Session, skip: int = 0, limit: int = 100) -> List[models.User]:
     return db.query(models.User).offset(skip).limit(limit).all()
+
+# def update_user(db: Session, user_id: int, update_data: schemas.UserUpdate) -> models.User:
+#     db_user = get_user(db, user_id)
+#     if not db_user:
+#         raise HTTPException(status_code=404, detail="User not found")
+
+#     for key, value in update_data.dict(exclude_unset=True).items():
+#         if key == "password" and value:
+#             setattr(db_user, key, hash_password(value))
+#         else:
+#             setattr(db_user, key, value)
+
+#     db.commit()
+#     db.refresh(db_user)
+#     return db_user
 
 
 def create_user(db: Session, user: schemas.UserCreate) -> models.User:
