@@ -3,6 +3,10 @@ from fastapi import HTTPException
 from . import models, schemas
 from typing import List, Optional
 from datetime import date
+
+# ==============================================================
+# USER CRUD
+# ==============================================================
 # from passlib.context import CryptContext
 
 # pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -15,11 +19,6 @@ from datetime import date
 # def verify_password(plain_password, hashed_password) -> bool:
 #     return pwd_context.verify(plain_password, hashed_password)
 
-
-# ==============================================================
-# USER CRUD
-# ==============================================================
-
 def get_user(db: Session, user_id: int) -> Optional[models.User]:
     return db.query(models.User).filter(models.User.user_id == user_id).first()
 
@@ -31,6 +30,21 @@ def get_user_by_username(db: Session, username: str) -> Optional[models.User]:
 def get_users(db: Session, skip: int = 0, limit: int = 100) -> List[models.User]:
     return db.query(models.User).offset(skip).limit(limit).all()
 
+# def update_user(db: Session, user_id: int, update_data: schemas.UserUpdate) -> models.User:
+#     db_user = get_user(db, user_id)
+#     if not db_user:
+#         raise HTTPException(status_code=404, detail="User not found")
+
+#     for key, value in update_data.dict(exclude_unset=True).items():
+#         if key == "password" and value:
+#             setattr(db_user, key, hash_password(value))
+#         else:
+#             setattr(db_user, key, value)
+
+#     db.commit()
+#     db.refresh(db_user)
+#     return db_user
+
 
 def create_user(db: Session, user: schemas.UserCreate) -> models.User:
     db_user = models.User(
@@ -41,7 +55,7 @@ def create_user(db: Session, user: schemas.UserCreate) -> models.User:
         role=user.role,
     )
     db.add(db_user)
-    db.flush()  # Để lấy user_id trước khi commit
+    db.flush()
 
     # Tạo profile tương ứng với role
     if user.role == models.UserRole.student and hasattr(user, 'student_code'):
@@ -63,22 +77,6 @@ def create_user(db: Session, user: schemas.UserCreate) -> models.User:
     db.commit()
     db.refresh(db_user)
     return db_user
-
-
-# def update_user(db: Session, user_id: int, update_data: schemas.UserUpdate) -> models.User:
-#     db_user = get_user(db, user_id)
-#     if not db_user:
-#         raise HTTPException(status_code=404, detail="User not found")
-
-#     for key, value in update_data.dict(exclude_unset=True).items():
-#         if key == "password" and value:
-#             setattr(db_user, key, hash_password(value))
-#         else:
-#             setattr(db_user, key, value)
-
-#     db.commit()
-#     db.refresh(db_user)
-#     return db_user
 
 
 def delete_user(db: Session, user_id: int) -> None:
@@ -162,7 +160,7 @@ def get_classes(db: Session) -> List[models.Class]:
 
 
 # ==============================================================
-# ENROLLMENT (Student-Class)
+# ENROLLMENT (Student-Class) - FIXED
 # ==============================================================
 
 def enroll_student(db: Session, enrollment: schemas.EnrollmentCreate) -> models.Enrollment:
@@ -179,6 +177,14 @@ def enroll_student(db: Session, enrollment: schemas.EnrollmentCreate) -> models.
 
 def get_enrollments(db: Session) -> List[models.Enrollment]:
     return db.query(models.Enrollment).all()
+
+
+# ✅ THÊM HÀM NÀY - Lấy enrollments theo student_id
+def get_student_enrollments(db: Session, student_id: int) -> List[models.Enrollment]:
+    """Lấy danh sách lớp học mà sinh viên đã đăng ký"""
+    return db.query(models.Enrollment).filter(
+        models.Enrollment.student_id == student_id
+    ).all()
 
 
 # ==============================================================
@@ -202,7 +208,7 @@ def get_assignments(db: Session) -> List[models.TeachingAssignment]:
 
 
 # ==============================================================
-# GRADE CRUD
+# GRADE CRUD - FIXED
 # ==============================================================
 
 def create_grade(db: Session, grade: schemas.GradeCreate) -> models.Grade:
@@ -237,3 +243,14 @@ def get_grades_by_student(db: Session, student_id: int) -> List[models.Grade]:
 
 def get_grades_by_class(db: Session, class_id: int) -> List[models.Grade]:
     return db.query(models.Grade).filter(models.Grade.class_id == class_id).all()
+
+
+# ✅ THÊM HÀM NÀY - Lấy grades có thể filter theo class
+def get_student_grades(db: Session, student_id: int, class_id: Optional[int] = None) -> List[models.Grade]:
+    """Lấy điểm của sinh viên, có thể filter theo class_id"""
+    query = db.query(models.Grade).filter(models.Grade.student_id == student_id)
+    
+    if class_id is not None:
+        query = query.filter(models.Grade.class_id == class_id)
+    
+    return query.all()
