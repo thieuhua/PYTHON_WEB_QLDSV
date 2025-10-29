@@ -1,4 +1,4 @@
-// teacherHome.js – phiên bản dùng dữ liệu động qua API
+// teacherHome.js – phiên bản SỬA LỖI cập nhật điểm
 
 // ====== Thiết lập chung ======
 let teacherClasses = [];
@@ -97,20 +97,35 @@ async function addStudentToClass(full_name, student_code) {
   }
 }
 
+// ✅ SỬA HÀM NÀY - Thêm class_id vào request body
 async function updateStudentGrade(student_id, field, value) {
   try {
-    const body = [{ student_id, subject: field, score: value }];
+    const body = [{
+      student_id: parseInt(student_id),
+      class_id: currentClass.class_id,  // ✅ THÊM class_id
+      subject: field,
+      score: parseFloat(value)
+    }];
+
+    console.log("Sending grade update:", body); // Debug log
+
     const res = await fetch(`/api/teacher/classes/${currentClass.class_id}/grades`, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify(body)
     });
-    if (!res.ok) throw new Error("Không thể cập nhật điểm");
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      console.error("Error response:", errorData);
+      throw new Error(errorData.detail || "Không thể cập nhật điểm");
+    }
+
     notify("✅ Cập nhật điểm thành công");
     await fetchClassDetail(currentClass.class_id);
   } catch (err) {
-    console.error(err);
-    notify("Cập nhật điểm thất bại", "error");
+    console.error("Grade update error:", err);
+    notify(`Cập nhật điểm thất bại: ${err.message}`, "error");
   }
 }
 
@@ -177,9 +192,9 @@ function renderStudentTable() {
   }
 
   tbody.innerHTML = cls.students.map((s, idx) => {
-    const att = s.grades?.attendance ?? "";
-    const mid = s.grades?.mid ?? "";
-    const fin = s.grades?.final ?? "";
+    const att = s.grades?.Chuyên_Cần?? "";
+    const mid = s.grades?.Giữa_Kì ?? "";
+    const fin = s.grades?.Cuối_Kì ?? "";
     const avg = (att || mid || fin)
       ? ((Number(att)*0.2 + Number(mid)*0.3 + Number(fin)*0.5).toFixed(1))
       : "-";
@@ -197,14 +212,37 @@ function renderStudentTable() {
   }).join("");
 }
 
-// ====== SỰ KIỆN ======
+// ✅ SỬA HÀM NÀY - Validation tốt hơn
 function onGradeEdit(studentId, inputElem) {
   const field = inputElem.getAttribute("data-field");
   const val = inputElem.value.trim();
-  const num = val === "" ? "" : Number(val);
-  if (num === "" || isNaN(num)) return;
-  const clamped = Math.max(0, Math.min(10, Math.round(num * 10) / 10));
+
+  // Cho phép xóa điểm (để trống)
+  if (val === "") {
+    notify("Điểm đã bị xóa", "error");
+    return;
+  }
+
+  const num = Number(val);
+
+  // Validate
+  if (isNaN(num)) {
+    notify("Vui lòng nhập số hợp lệ", "error");
+    inputElem.value = "";
+    return;
+  }
+
+  if (num < 0 || num > 10) {
+    notify("Điểm phải trong khoảng 0-10", "error");
+    inputElem.value = "";
+    return;
+  }
+
+  // Làm tròn 1 chữ số thập phân
+  const clamped = Math.round(num * 10) / 10;
   inputElem.value = clamped;
+
+  // Gọi API cập nhật
   updateStudentGrade(studentId, field, clamped);
 }
 
