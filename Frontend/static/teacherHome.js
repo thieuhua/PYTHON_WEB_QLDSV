@@ -1,8 +1,21 @@
-// teacherHome.js – phiên bản dùng dữ liệu động qua API
+// teacherHome.js – FIXED VERSION - Cập nhật điểm và hiển thị đúng
 
 // ====== Thiết lập chung ======
 let teacherClasses = [];
 let currentClass = null;
+
+// ✅ THÊM MAPPING GIỮA FRONTEND VÀ BACKEND
+const FIELD_MAPPING = {
+  'attendance': 'attendance',
+  'mid': 'mid',
+  'final': 'final'
+};
+
+const DISPLAY_MAPPING = {
+  'attendance': 'Chuyên Cần',
+  'mid': 'Giữa Kì',
+  'final': 'Cuối Kì'
+};
 
 // ====== Hàm tiện ích ======
 function getToken() {
@@ -73,6 +86,9 @@ async function fetchClassDetail(classId) {
     });
     if (!res.ok) throw new Error("Không tải được chi tiết lớp");
     currentClass = await res.json();
+
+    console.log("📊 Class detail loaded:", currentClass); // Debug log
+
     renderStudentTable();
   } catch (err) {
     console.error(err);
@@ -97,20 +113,41 @@ async function addStudentToClass(full_name, student_code) {
   }
 }
 
+// ✅ FIXED - Gửi đúng format và reload data
 async function updateStudentGrade(student_id, field, value) {
   try {
-    const body = [{ student_id, subject: field, score: value }];
+    const body = [{
+      student_id: parseInt(student_id),
+      class_id: currentClass.class_id,
+      subject: field, // ✅ Gửi đúng tên field: "attendance", "mid", "final"
+      score: parseFloat(value)
+    }];
+
+    console.log("📤 Sending grade update:", body);
+
     const res = await fetch(`/api/teacher/classes/${currentClass.class_id}/grades`, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify(body)
     });
-    if (!res.ok) throw new Error("Không thể cập nhật điểm");
+
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      console.error("❌ Error response:", errorData);
+      throw new Error(errorData.detail || "Không thể cập nhật điểm");
+    }
+
+    const result = await res.json();
+    console.log("✅ Grade update response:", result);
+
     notify("✅ Cập nhật điểm thành công");
+
+    // ✅ RELOAD data để hiển thị điểm mới
     await fetchClassDetail(currentClass.class_id);
+
   } catch (err) {
-    console.error(err);
-    notify("Cập nhật điểm thất bại", "error");
+    console.error("❌ Grade update error:", err);
+    notify(`Cập nhật điểm thất bại: ${err.message}`, "error");
   }
 }
 
@@ -166,23 +203,33 @@ function closeModal() {
   document.getElementById("class-modal").classList.add("hidden");
 }
 
-// ====== HIỂN THỊ SINH VIÊN ======
+// ✅ FIXED - Đọc đúng structure grades từ backend
 function renderStudentTable() {
   const tbody = document.getElementById("student-tbody");
   if (!tbody) return;
   const cls = currentClass;
+
   if (!cls || !cls.students?.length) {
-    tbody.innerHTML = `<tr><td colspan="9"><em>Chưa có sinh viên trong lớp.</em></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8"><em>Chưa có sinh viên trong lớp.</em></td></tr>`;
     return;
   }
 
+  console.log("📋 Rendering students:", cls.students); // Debug log
+
   tbody.innerHTML = cls.students.map((s, idx) => {
-    const att = s.grades?.attendance ?? "";
-    const mid = s.grades?.mid ?? "";
-    const fin = s.grades?.final ?? "";
-    const avg = (att || mid || fin)
-      ? ((Number(att)*0.2 + Number(mid)*0.3 + Number(fin)*0.5).toFixed(1))
+    // ✅ Đọc đúng từ s.grades (object với keys: attendance, mid, final)
+    const grades = s.grades || {};
+    const att = grades.attendance ?? "";
+    const mid = grades.mid ?? "";
+    const fin = grades.final ?? "";
+
+    // Tính điểm trung bình
+    const avg = (att !== "" && mid !== "" && fin !== "")
+      ? ((Number(att) * 0.2 + Number(mid) * 0.3 + Number(fin) * 0.5).toFixed(1))
       : "-";
+
+    console.log(`Student ${s.student_code}: att=${att}, mid=${mid}, fin=${fin}, avg=${avg}`);
+
     return `
       <tr data-stu-id="${s.student_id}">
         <td>${idx + 1}</td>
@@ -191,20 +238,45 @@ function renderStudentTable() {
         <td><input class="input-grade" data-field="attendance" value="${att}" onchange="onGradeEdit('${s.student_id}', this)"></td>
         <td><input class="input-grade" data-field="mid" value="${mid}" onchange="onGradeEdit('${s.student_id}', this)"></td>
         <td><input class="input-grade" data-field="final" value="${fin}" onchange="onGradeEdit('${s.student_id}', this)"></td>
-        <td>${avg}</td>
+        <td><strong>${avg}</strong></td>
         <td><button class="create-btn small danger" onclick="deleteStudentFromClass('${s.student_id}')">Xóa</button></td>
       </tr>`;
   }).join("");
 }
 
-// ====== SỰ KIỆN ======
+// ✅ FIXED - Validation và gửi đúng field name
 function onGradeEdit(studentId, inputElem) {
-  const field = inputElem.getAttribute("data-field");
+  const field = inputElem.getAttribute("data-field"); // "attendance", "mid", hoặc "final"
   const val = inputElem.value.trim();
-  const num = val === "" ? "" : Number(val);
-  if (num === "" || isNaN(num)) return;
-  const clamped = Math.max(0, Math.min(10, Math.round(num * 10) / 10));
+
+  // Cho phép xóa điểm (để trống)
+  if (val === "") {
+    notify("Điểm đã bị xóa", "error");
+    return;
+  }
+
+  const num = Number(val);
+
+  // Validate
+  if (isNaN(num)) {
+    notify("Vui lòng nhập số hợp lệ", "error");
+    inputElem.value = "";
+    return;
+  }
+
+  if (num < 0 || num > 10) {
+    notify("Điểm phải trong khoảng 0-10", "error");
+    inputElem.value = "";
+    return;
+  }
+
+  // Làm tròn 1 chữ số thập phân
+  const clamped = Math.round(num * 10) / 10;
   inputElem.value = clamped;
+
+  console.log(`🔄 Updating grade: student=${studentId}, field=${field}, value=${clamped}`);
+
+  // ✅ Gọi API với field name đúng
   updateStudentGrade(studentId, field, clamped);
 }
 
