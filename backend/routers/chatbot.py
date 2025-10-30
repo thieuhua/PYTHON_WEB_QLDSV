@@ -1,195 +1,143 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from typing import List, Optional
-import anthropic
-import os
-from datetime import datetime
-
-from ..db import crud, models, database
+from ..db import database, crud
 from . import jwt_auth
+import requests
 
 router = APIRouter(
-    prefix="/chatbot",
+    prefix="/api/chatbot",
     tags=["Chatbot"]
 )
 
-# Khởi tạo Anthropic client
-client = anthropic.Anthropic(
-    api_key=os.environ.get("ANTHROPIC_API_KEY")
-)
-
-# Models
-class ChatMessage(BaseModel):
-    role: str  # "user" hoặc "assistant"
-    content: str
-    timestamp: Optional[str] = None
-
-class ChatRequest(BaseModel):
-    message: str
-    conversation_history: Optional[List[ChatMessage]] = []
-
-class ChatResponse(BaseModel):
-    response: str
-    timestamp: str
-
-# Helper function để lấy context về sinh viên
-def get_student_context(db: Session, user_id: int) -> str:
-    """Lấy thông tin sinh viên để cung cấp context cho chatbot"""
-    user = crud.get_user(db, user_id)
-    if not user or not user.student_profile:
-        return ""
-    
-    context_parts = [
-        f"Thông tin sinh viên:",
-        f"- Họ tên: {user.full_name}",
-        f"- Mã sinh viên: {user.student_profile.student_code}",
-    ]
-    
-    if user.student_profile.birthdate:
-        context_parts.append(f"- Ngày sinh: {user.student_profile.birthdate}")
-    
-    # Lấy danh sách lớp đang học
-    enrollments = crud.get_student_enrollments(db, user.user_id)
-    if enrollments:
-        context_parts.append(f"\nĐang học {len(enrollments)} lớp:")
-        for enrollment in enrollments:
-            cls = crud.get_class(db, enrollment.class_id)
-            if cls:
-                context_parts.append(f"  - {cls.class_name} (Năm {cls.year}, HK{cls.semester})")
-    
-    # Lấy điểm số
-    grades = crud.get_student_grades(db, user.user_id)
-    if grades:
-        context_parts.append(f"\nĐiểm số gần đây:")
-        # Nhóm điểm theo lớp
-        grades_by_class = {}
-        for grade in grades:
-            if grade.class_id not in grades_by_class:
-                grades_by_class[grade.class_id] = []
-            grades_by_class[grade.class_id].append(grade)
-        
-        for class_id, class_grades in grades_by_class.items():
-            cls = crud.get_class(db, class_id)
-            if cls:
-                context_parts.append(f"  Lớp {cls.class_name}:")
-                for grade in class_grades:
-                    context_parts.append(f"    - {grade.subject}: {grade.score}")
-    
-    return "\n".join(context_parts)
-
-def get_system_prompt(student_context: str) -> str:
-    """Tạo system prompt cho chatbot"""
-    return f"""Bạn là một trợ lý AI thông minh và thân thiện, được thiết kế để tư vấn và hỗ trợ sinh viên.
-
-{student_context}
-
-Nhiệm vụ của bạn:
-1. Trả lời các câu hỏi về học tập, điểm số, lịch học
-2. Tư vấn về việc cải thiện kết quả học tập
-3. Giải đáp thắc mắc về quy định, quy trình của trường
-4. Động viên và khuyến khích sinh viên
-5. Đưa ra lời khuyên xây dựng về việc học và phát triển bản thân
-
-Phong cách giao tiếp:
-- Thân thiện, gần gũi nhưng chuyên nghiệp
-- Sử dụng tiếng Việt tự nhiên
-- Ngắn gọn, súc tích nhưng đầy đủ thông tin
-- Động viên tích cực
-- Nếu không biết, hãy thành thật thừa nhận và gợi ý liên hệ với giáo viên/ban quản lý
-
-Lưu ý:
-- KHÔNG bịa đặt thông tin không có trong dữ liệu
-- Sử dụng thông tin sinh viên ở trên để cá nhân hóa câu trả lời
-- Nếu sinh viên hỏi về điểm, hãy phân tích và đưa ra lời khuyên cụ thể
-"""
-
-@router.post("/chat", response_model=ChatResponse)
-async def chat(
-    request: ChatRequest,
-    current_user: dict = Depends(jwt_auth.auth),
-    db: Session = Depends(database.get_db)
-):
-    """
-    API endpoint cho chatbot AI tư vấn sinh viên
-    """
+# ✅ Kết nối DB
+def get_db():
+    db = database.SessionLocal()
     try:
-        # Lấy context về sinh viên
-        student_context = get_student_context(db, current_user.get('id'))
-        system_prompt = get_system_prompt(student_context)
-        
-        # Chuẩn bị conversation history
-        messages = []
-        
-        # Thêm lịch sử hội thoại nếu có
-        for msg in request.conversation_history[-10:]:  # Chỉ lấy 10 tin nhắn gần nhất
-            messages.append({
-                "role": msg.role,
-                "content": msg.content
-            })
-        
-        # Thêm tin nhắn hiện tại
-        messages.append({
-            "role": "user",
-            "content": request.message
-        })
-        
-        # Gọi Claude API
-        response = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=1024,
-            system=system_prompt,
-            messages=messages
+        yield db
+    finally:
+        db.close()
+
+# 🧠 Schema message từ frontend
+class ChatMessage(BaseModel):
+    message: str
+    conversation_history: list | None = None
+
+# 🧠 Prompt nền cho AI
+system_prompt = {
+    "role": "system",
+    "content": (
+        "Bạn là Ollama — một trợ lý AI thân thiện, thông minh và nói tiếng Việt tự nhiên. "
+        "Bạn được tích hợp trong hệ thống quản lý sinh viên của trường đại học, "
+        "nhưng bạn không bị giới hạn trong lĩnh vực học tập — bạn có thể trò chuyện về công nghệ, thể thao, âm nhạc, khoa học, "
+        "tâm lý, kỹ năng sống, và nhiều chủ đề khác như một người bạn hiểu biết và đáng tin cậy.\n\n"
+
+        "🎯 **Mục tiêu của bạn**:\n"
+        "- Giúp sinh viên tìm hiểu, học tập và phát triển bản thân.\n"
+        "- Mang đến cảm giác gần gũi, tích cực và dễ chịu trong mọi cuộc trò chuyện.\n"
+        "- Giải thích rõ ràng, có logic, và sẵn sàng hỏi lại khi người dùng nói chưa rõ.\n\n"
+
+        "🧠 **Nguyên tắc phản hồi**:\n"
+        "• Luôn nói tiếng Việt tự nhiên, thân thiện, có cảm xúc nhẹ nhàng như đang nói chuyện trực tiếp.\n"
+        "• Nếu câu hỏi liên quan đến học tập → trả lời ngắn gọn, súc tích, đúng trọng tâm, có thể thêm ví dụ hoặc lời khuyên học hiệu quả.\n"
+        "• Nếu câu hỏi ngoài lề → phản hồi linh hoạt, sáng tạo, có thể đưa quan điểm hoặc ví dụ đời thường để tạo cảm giác thật.\n"
+        "• Nếu người dùng nói không rõ → lịch sự hỏi lại để làm rõ trước khi trả lời.\n"
+        "• Nếu không có dữ liệu thật → phản hồi mềm mại, như: 'Mình không chắc lắm, nhưng theo mình thì...', hoặc 'Theo hiểu biết chung thì...'.\n"
+        "• Khi nói về cảm xúc hoặc cuộc sống → thể hiện sự đồng cảm, tinh tế, không rập khuôn.\n"
+        "• Khi nói về kiến thức → ưu tiên sự rõ ràng, logic, và có tính thực tế.\n\n"
+
+        "💬 **Phong cách giao tiếp**:\n"
+        "- Dùng ngôi xưng “mình” khi nói, và gọi người dùng là “bạn”.\n"
+        "- Giọng điệu thân thiện, tự nhiên, có thể hơi vui hoặc nhẹ nhàng tùy tình huống.\n"
+        "- Tránh dùng ngôn ngữ cứng nhắc hoặc quá học thuật trừ khi người dùng yêu cầu.\n"
+        "- Có thể kết hợp giải thích – ví dụ – lời khuyên – hoặc câu hỏi ngược để tương tác tự nhiên.\n\n"
+
+        "✨ **Mục tiêu cuối cùng**: "
+        "Khi trò chuyện với Ollama, người dùng cảm thấy được lắng nghe, được giúp đỡ, "
+        "và có thể nói chuyện thoải mái như với một người bạn thông minh, tích cực và luôn sẵn lòng hỗ trợ."
+    )
+}
+
+
+
+# 💬 API chính: chat với AI
+@router.post("/chat")
+async def chat_with_ai(
+    data: ChatMessage,
+    db: Session = Depends(get_db),
+    current_user=Depends(jwt_auth.get_current_user)
+):
+    try:
+        messages = [system_prompt]
+        if data.conversation_history:
+            messages.extend(data.conversation_history)
+        messages.append({"role": "user", "content": data.message})
+
+        user_message = data.message.lower().strip()
+
+        # ------------------------
+        # Truy vấn dữ liệu thật từ DB
+        # ------------------------
+        if "điểm" in user_message or "gpa" in user_message:
+            grades = crud.get_grades_by_student(db, current_user.user_id)
+            if not grades:
+                return {"response": "Hiện bạn chưa có điểm nào được lưu trong hệ thống nha!"}
+            formatted = "\n".join([f"- {g.subject}: {g.score}" for g in grades])
+            return {"response": f"📊 Điểm của bạn trong hệ thống:\n{formatted}"}
+
+        elif "lớp" in user_message and "đăng ký" in user_message:
+            enrollments = crud.get_student_enrollments(db, current_user.user_id)
+            if not enrollments:
+                return {"response": "Bạn chưa đăng ký lớp học nào trong hệ thống nha!"}
+            class_names = []
+            for e in enrollments:
+                cls = crud.get_class(db, e.class_id)
+                if cls:
+                    class_names.append(f"- {cls.class_name} (Học kỳ {cls.semester}/{cls.year})")
+            return {"response": f"📚 Bạn đang theo học các lớp sau:\n" + "\n".join(class_names)}
+
+        elif "giảng viên" in user_message or "teacher" in user_message:
+            teachers = crud.get_teachers(db)
+            if not teachers:
+                return {"response": "Hiện hệ thống chưa có giảng viên nào."}
+            formatted = "\n".join([f"- {t.user.full_name} ({t.title or 'Giảng viên'})" for t in teachers])
+            return {"response": f"👩‍🏫 Danh sách giảng viên hiện có:\n{formatted}"}
+
+        # ------------------------
+        # Nếu không match → gửi AI
+        # ------------------------
+        response = requests.post(
+            "http://localhost:11434/api/chat",
+            json={
+                "model": "llama3",
+                "messages": messages,
+                "stream": False
+            },
+            timeout=60
         )
-        
-        # Lấy nội dung response
-        assistant_message = response.content[0].text
-        
-        return ChatResponse(
-            response=assistant_message,
-            timestamp=datetime.now().isoformat()
-        )
-        
+        if response.status_code != 200:
+            raise HTTPException(status_code=500, detail="Không thể kết nối tới Ollama")
+
+        result = response.json()
+        reply = result.get("message", {}).get("content", "").strip()
+        if not reply:
+            reply = "Xin lỗi, mình chưa có thông tin cụ thể về câu này, bạn có thể nói rõ hơn không?"
+        return {"response": reply}
+
     except Exception as e:
-        print(f"Chatbot error: {e}")
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Lỗi khi xử lý chatbot: {str(e)}"
-        )
+        print("❌ Lỗi chatbot:", e)
+        raise HTTPException(status_code=500, detail="Đã có lỗi xảy ra khi xử lý yêu cầu.")
 
+# 💡 Gợi ý câu hỏi
 @router.get("/suggestions")
-async def get_suggestions(
-    current_user: dict = Depends(jwt_auth.auth),
-    db: Session = Depends(database.get_db)
-):
-    """
-    Lấy danh sách câu hỏi gợi ý cho sinh viên
-    """
-    suggestions = [
-        "Điểm của em trong các môn học như thế nào?",
-        "Em nên làm gì để cải thiện điểm số?",
-        "Cho em xem lịch học của em",
-        "Em đang học những môn gì?",
-        "Tính điểm trung bình của em",
-        "Tư vấn cho em về việc học tập hiệu quả",
-        "Làm thế nào để quản lý thời gian học tốt hơn?",
-        "Em cần chuẩn bị gì cho kỳ thi cuối kỳ?"
-    ]
-    
-    return {"suggestions": suggestions}
-
-@router.post("/feedback")
-async def submit_feedback(
-    feedback: dict,
-    current_user: dict = Depends(jwt_auth.auth)
-):
-    """
-    Nhận phản hồi về chất lượng chatbot
-    """
-    # TODO: Lưu feedback vào database
-    print(f"Feedback from user {current_user.get('username')}: {feedback}")
-    
+async def get_chatbot_suggestions(current_user=Depends(jwt_auth.get_current_user)):
     return {
-        "message": "Cảm ơn bạn đã đóng góp ý kiến!",
-        "status": "success"
+        "suggestions": [
+            "📊 Xem điểm của tôi trong học kỳ này",
+            "📚 Tôi đang học những lớp nào?",
+            "👩‍🏫 Danh sách giảng viên trong trường là ai?",
+            "🎵 Gợi ý vài bài nhạc giúp tôi học tập trung hơn",
+            "⚽ Bạn có thích bóng đá không?",
+            "🤖 AI có thể thay thế con người trong tương lai không?"
+        ]
     }

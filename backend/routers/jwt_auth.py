@@ -68,3 +68,27 @@ async def auth_request(request: Request = None, token: str = None):
         raise HTTPException(status_code=401, detail="Invalid token")
     
     return user
+
+# ==========================
+# ✅ Hàm get_current_user dùng cho chatbot
+# ==========================
+async def get_current_user(request: Request):
+    """Lấy user hiện tại từ token trong cookie hoặc header"""
+    try:
+        token = request.cookies.get("access_token")
+        if not token:
+            auth_header = request.headers.get("Authorization")
+            if auth_header and auth_header.startswith("Bearer "):
+                token = auth_header.split("Bearer ")[1]
+
+        if not token:
+            raise HTTPException(status_code=401, detail="Not authenticated")
+
+        user = decode_tokenNE(token)
+        if not user:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        return user
+    except Exception as e:
+        print(f"[get_current_user] Error: {e}")
+        raise HTTPException(status_code=401, detail="Authentication error")

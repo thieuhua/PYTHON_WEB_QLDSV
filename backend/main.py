@@ -4,7 +4,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 from .db import models, database
-from .routers import mainrouter, jwt_auth
+from .routers import mainrouter, jwt_auth, chatbot
 
 models.Base.metadata.create_all(bind=database.engine)
 
@@ -89,6 +89,8 @@ app.add_middleware(
 
 # Gắn router chính (đã bao gồm api + student)
 app.include_router(mainrouter, prefix="/api")
+app.include_router(chatbot.router)  # không cần prefix nữa vì chatbot.py đã có prefix="/chatbot"
+
 
 # Mount static
 BASE_DIR = Path(__file__).resolve().parent.parent
