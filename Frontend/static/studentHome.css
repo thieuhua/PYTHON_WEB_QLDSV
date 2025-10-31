@@ -198,3 +198,47 @@ body {
     transition: var(--transition);
 }
 .tooltip:hover::after { opacity: 1; transform: translate(-50%, -8px); }
+
+.code-input {
+    padding:0.5rem;
+    margin-top:20px;
+    margin-bottom: 10px;
+    border-radius:8px;
+    align-items: center;
+    border:1px solid #e3e3e3;
+    font-size:0.95rem;
+}
+.join-class-button {
+    margin-left: 20%;
+    font-size: 0.95rem;
+    border: 2px solid transparent; 
+    padding: 10px 10px;
+    color: white;
+    border-radius: 20px;
+    background: linear-gradient(90deg, var(--main-color), var(--secondary-color));
+    text-align: center;
+    transition: all 0.2s ease; 
+}
+
+.join-class-button:hover { 
+    transform: scale(1.1); 
+    background-color: var(--secondary-color); 
+}
+
+.join-class-button:active {
+    transform: scale(0.95);
+}
+
+.join-class-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 1rem;
+}
+.join-class-container .code-input {
+    width: 80%;
+    margin: 0.5rem 0;
+}
+.join-class-container .join-class-button {
+    margin-left: 0;
+}

@@ -95,3 +95,29 @@ def add_student(
         return {"message": "Student added successfully!", "student_id": new_student.student_id}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+    
+@router.post("/{student_id}/join")
+def join_class(student_id: int, request: schemas.JoinCode, db: Session = Depends(database.get_db)):
+    
+    join_code = request.code
+    print(join_code)
+    check = db.query(models.JoinCode).filter(models.JoinCode.code == join_code).first()
+    if check is None:
+        print("DEBUG: class not found")
+        return {"message": "Class not found"}
+
+    existing = db.query(models.Enrollment).filter(
+        models.Enrollment.student_id == student_id,
+        models.Enrollment.class_id == check.class_id
+    ).first()
+    if existing:
+        print("DEBUG: already joined")
+        return {"message": "Class already joined"}
+
+    enrollment_data = schemas.EnrollmentCreate(
+        student_id=student_id,
+        class_id=check.class_id
+    )
+    crud.enroll_student(db, enrollment_data)
+    print("DEBUG: joined successfully")
+    return {"message": "Class joined successfully"}

@@ -42,6 +42,25 @@ def create_class_for_teacher(db: Session, teacher_id: int, class_in: schemas.Cla
     db.commit()
     db.refresh(new_class)
 
+    # Tao code vao lop
+    def generate_code():
+        characters = "1234567890QWERTYUIOPASDFGHJKLZXCVBNM"
+        while True:
+            code = ""
+            for i in range(6):
+                code += random.choice(characters)
+            if db.query(models.JoinCode).filter(models.JoinCode.code == code).first() is None:
+                return code
+
+    random_code = generate_code()
+    db_joincode = models.JoinCode(
+        code=random_code,
+        class_id=new_class.class_id
+    )
+    db.add(db_joincode)
+    db.commit()
+    db.refresh(db_joincode)
+    
     # create teaching assignment
     ta = models.TeachingAssignment(teacher_id=teacher_id, class_id=new_class.class_id)
     db.add(ta)

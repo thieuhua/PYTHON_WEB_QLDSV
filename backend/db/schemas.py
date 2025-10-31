@@ -182,3 +182,10 @@ class MeRead(UserRead):
 
     class Config:
         orm_mode = True
+
+#Join code schema
+class JoinCode(BaseModel):
+    code: str
+
+    class Config:
+        orm_mode=True

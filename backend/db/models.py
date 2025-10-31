@@ -61,6 +61,7 @@ class Class(Base):
     enrollments = relationship("Enrollment", back_populates="class_")
     teaching_assignments = relationship("TeachingAssignment", back_populates="class_")
     grades = relationship("Grade", back_populates="class_")
+    join_codes = relationship("JoinCode", back_populates="class_")
 
 # -------- ENROLLMENT (Học sinh - lớp) --------
 class Enrollment(Base):
@@ -97,3 +98,12 @@ class Grade(Base):
 
     student = relationship("Student", back_populates="grades")
     class_ = relationship("Class", back_populates="grades")
+
+#Luu code tham gia lop học
+class JoinCode(Base):
+    __tablename__="join_codes"
+
+    code= Column(String, primary_key=True, index=True)
+    class_id=Column(Integer, ForeignKey("classes.class_id"), nullable=False)
+
+    class_=relationship("Class", back_populates="join_codes")
