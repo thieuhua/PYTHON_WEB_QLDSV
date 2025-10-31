@@ -254,3 +254,18 @@ def get_student_grades(db: Session, student_id: int, class_id: Optional[int] = N
         query = query.filter(models.Grade.class_id == class_id)
     
     return query.all()
+
+def get_student_grades_by_subject(db: Session, student_id: int) -> dict[str, list[float]]:
+    """
+    Lấy tất cả điểm của một sinh viên, nhóm theo môn.
+    Trả về dict: { subject_name: [scores...] }
+    """
+    grades = db.query(models.Grade).filter(models.Grade.student_id == student_id).all()
+    subject_scores: dict[str, list[float]] = {}
+
+    for g in grades:
+        if g.subject not in subject_scores:
+            subject_scores[g.subject] = []
+        subject_scores[g.subject].append(g.score)
+
+    return subject_scores

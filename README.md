@@ -23,6 +23,11 @@ my_project/
 │
 │── requirements.txt         # thư viện cần cài
 
+<!-- nếu muốn chạy chatbot:
+tải ở https://ollama.com/download
+tiếp đó pip install ollama
+mở CMD ollama serve
+ollama pull llama3:instruct -->
 
 chạy:
 # tạo virtual env nếu muốn
