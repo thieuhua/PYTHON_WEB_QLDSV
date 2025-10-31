@@ -64,13 +64,17 @@ async function fetchCurrentUser() {
 
 // ===== 2. HIỂN THỊ THÔNG TIN SINH VIÊN =====
 function renderStudentInfo(userData) {
-    document.getElementById('student-name').textContent = userData.full_name || 'N/A';
+    console.log('📋 renderStudentInfo:', userData); // ✨ [SỬA] Debug log
 
+    document.getElementById('student-name').textContent = userData.full_name || 'N/A';
+ // ✨ [SỬA] Kiểm tra xem có student_profile không
     if (userData.role === 'student' && userData.student_profile) {
         const profile = userData.student_profile;
-
+        console.log('📝 Student profile:', profile); // ✨ [SỬA] Debug log
+         // ✨ [SỬA] Hiển thị mã sinh viên từ API
         document.getElementById('student-id').textContent = profile.student_code || 'N/A';
-
+        console.log('✅ Set student-id to:', profile.student_code); // ✨ [SỬA] Debug log
+  
         if (profile.birthdate) {
             const date = new Date(profile.birthdate);
             const formatted = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
@@ -80,6 +84,12 @@ function renderStudentInfo(userData) {
         }
 
         document.getElementById('student-class').textContent = 'Sinh viên';
+    }
+     } else {
+        // ✨ [SỬA] Nếu không có student_profile, log lỗi
+        console.warn('⚠️ No student_profile found or role is not student');
+        console.log('Role:', userData.role);
+        console.log('Student Profile:', userData.student_profile);
     }
 }
 
@@ -473,8 +483,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     console.log('✅ Token found, loading data...');
+    // ✨ [SỬA] Thêm check xem có flag reload từ editProfile không
+    // Nếu có flag, xóa nó và force reload data
+    if (sessionStorage.getItem('reloadStudentData')) {
+        console.log('🔄 Reloading data after edit profile...');
+        sessionStorage.removeItem('reloadStudentData');
+        // Gọi fetchCurrentUser() để reload thông tin
+        await fetchCurrentUser();
+    } else {
+        // ✨ [SỬA] Gọi fetchCurrentUser() để load thông tin sinh viên
+        await fetchCurrentUser();
+    }
+
+    // Gọi generateClassCards() để load danh sách lớp học
 
     await generateClassCards();
+});
+
+// ✨ [SỬA] Thêm detect khi page được focus lại (quay lại từ editProfile)
+document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'visible') {
+        console.log('📄 Page became visible - reloading data...');
+        await fetchCurrentUser();
+    }
+});
+
+// ✨ [SỬA] Thêm detect khi quay lại từ page khác (sử dụng window focus event)
+window.addEventListener('focus', async () => {
+    console.log('🔄 Window focused - refreshing student info...');
+    await fetchCurrentUser();
 });
 
 // CSS Animation
