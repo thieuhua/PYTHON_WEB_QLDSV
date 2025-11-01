@@ -190,6 +190,7 @@ async function openClassModal(classId) {
   if (!cls) return;
 
   document.getElementById("modal-class-name").textContent = cls.class_name;
+  document.getElementById("modal-class-join-code").textContent =cls.join_code;
   document.getElementById("modal-class-code").textContent = cls.class_id;
   document.getElementById("modal-count").textContent = cls.students?.length || 0;
   document.getElementById("modal-max").textContent = cls.max_students || "-";

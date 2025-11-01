@@ -3,7 +3,7 @@ from typing import List, Dict, Optional, Tuple
 import secrets
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
-
+import random
 from . import models, schemas, crud  # assumes crud.get_user_by_username and crud.create_user exist
 from .database import SessionLocal
 
@@ -42,6 +42,25 @@ def create_class_for_teacher(db: Session, teacher_id: int, class_in: schemas.Cla
     db.commit()
     db.refresh(new_class)
 
+    # Tao code vao lop
+    def generate_code():
+        characters = "1234567890QWERTYUIOPASDFGHJKLZXCVBNM"
+        while True:
+            code = ""
+            for i in range(6):
+                code += random.choice(characters)
+            if db.query(models.JoinCode).filter(models.JoinCode.code == code).first() is None:
+                return code
+
+    random_code = generate_code()
+    db_joincode = models.JoinCode(
+        code=random_code,
+        class_id=new_class.class_id
+    )
+    db.add(db_joincode)
+    db.commit()
+    db.refresh(db_joincode)
+    
     # create teaching assignment
     ta = models.TeachingAssignment(teacher_id=teacher_id, class_id=new_class.class_id)
     db.add(ta)
@@ -91,6 +110,7 @@ def get_class_detail(db: Session, class_id: int) -> Optional[Dict]:
         "class_name": cls.class_name,
         "year": cls.year,
         "semester": cls.semester,
+        "join_code":cls.join_codes[0].code if cls.join_codes else None,
         # optional: expose max_students or other metadata; if not in model you can set None
         "max_students": getattr(cls, "max_students", None),
         "students": students

@@ -504,3 +504,41 @@ style.textContent = `
 document.head.appendChild(style);
 
 console.log('✅ studentHome.js initialized');
+
+
+//Tham gia lop
+async function JoinClass() {
+
+    const response = await fetch(`/api/me`, {
+            headers: getAuthHeaders()
+        });
+
+        if (!response.ok) {
+            throw new Error('Không thể lấy thông tin người dùng');
+        }
+    const userData = await response.json();
+
+    const studentId = parseInt(userData.student_profile.student_id);
+    const joinCode = document.querySelector('.code-input').value.trim();
+
+    console.log("joinCode:", joinCode, "studentId:", studentId);
+    fetch(`http://127.0.0.1:8000/api/student/${studentId}/join`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            code: joinCode
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        console.log("Server response:", data);
+    })
+    .catch(error => {
+        console.error("Error occurred:", error);
+        alert("Error occured, please try again.");
+    });
+
+}
