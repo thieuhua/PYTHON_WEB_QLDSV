@@ -21,10 +21,26 @@ def get_db():
 
 @router.post("/register")
 def register(user: UserAuth, db: Session = Depends(get_db)):
+     # [SỬA] Tạo user với role = student mặc định
     hashedpassw: str = jwt_auth.hash_password(user.password)
-    user_db = schemas.UserCreate(username=user.username, password=hashedpassw, full_name= "NoName")
+    user_db = schemas.UserCreate(
+        username=user.username,
+        password=hashedpassw,
+        full_name="NoName",
+        role="student"  # [SỬA] Set role mặc định là student
+    )
     try:
-        crud.create_user(db, user_db)
+        new_user = crud.create_user(db, user_db)
+
+        # [SỬA] Tự động tạo student profile với mã SV
+        student_code = f"ST{new_user.user_id:04d}"
+        student_create = schemas.StudentCreate(
+            user_id=new_user.user_id,
+            student_code=student_code,
+            birthdate=None
+        )
+        crud.create_student(db, student_create)
+
     except Exception as e:
         print("Lỗi khi tạo user:", e)
         raise HTTPException(400)
@@ -88,6 +104,9 @@ def update_me(update: schemas.UserUpdate, user: dict = Depends(jwt_auth.auth), d
     if str(effective_role) == 'student':
         student = crud.get_student(db, db_user.user_id)
         if student:
+            # [SỬA] Cho phép update student_code khi student đã tồn tại
+            if 'student_code' in data:
+                student.student_code = data.pop('student_code')
             if 'birthdate' in data:
                 student.birthdate = data.pop('birthdate')
         else:
