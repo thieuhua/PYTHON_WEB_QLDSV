@@ -316,3 +316,33 @@ function logout() {
   localStorage.removeItem("userInfo");
   window.location.href = "/login";
 }
+
+// ====== CHỈNH SỬA THÔNG TIN ======
+function editProfile() {
+  console.log("✏️ Chuyển hướng tới trang chỉnh sửa thông tin...");
+  window.location.href = "/editProfile";
+}
+
+// ====== CẬP NHẬT REAL-TIME KHI QUAY LẠI =====
+window.addEventListener('focus', async () => {
+  console.log("🔄 Trang được focus, cập nhật thông tin...");
+  await fetchClasses();
+});
+
+// ===== CẬP NHẬT REAL-TIME KHI localStorage THAY ĐỔI =====
+window.addEventListener('storage', async (e) => {
+  if (e.key === 'userInfo') {
+    console.log("📝 localStorage userInfo thay đổi, cập nhật giao diện...");
+    try {
+      const updatedUser = JSON.parse(e.newValue);
+      // Update sidebar nếu có
+      const userNameEl = document.querySelector('.teacher-name');
+      if (userNameEl && updatedUser.full_name) {
+        userNameEl.textContent = updatedUser.full_name;
+      }
+    } catch (err) {
+      console.error("❌ Lỗi parse userInfo:", err);
+    }
+  }
+});
+

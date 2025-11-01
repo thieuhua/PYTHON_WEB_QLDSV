@@ -29,7 +29,7 @@ async def get_current_user(request: Request):
             auth_header = request.headers.get("Authorization")
             if auth_header and auth_header.startswith("Bearer "):
                 token = auth_header.split("Bearer ")[1]
-        
+
         if token:
             # Sử dụng hàm decode_tokenNE từ jwt_auth
             user = jwt_auth.decode_tokenNE(token)
@@ -38,15 +38,17 @@ async def get_current_user(request: Request):
         print(f"Auth error: {e}")
     return None
 
+
 def require_role(required_role: str):
     """Middleware kiểm tra role"""
+
     async def role_checker(request: Request):
         user = await get_current_user(request)
-        
+
         if not user:
             # Chưa đăng nhập -> chuyển hướng đến login
             return RedirectResponse(url="/login")
-        
+
         # Lấy role thực tế từ database
         from .db import crud
         from .db.database import SessionLocal
@@ -56,13 +58,13 @@ def require_role(required_role: str):
             if not db_user or db_user.role != required_role:
                 # Không đúng role -> trả về lỗi 403
                 raise HTTPException(
-                    status_code=403, 
+                    status_code=403,
                     detail=f"Yêu cầu role {required_role} để truy cập trang này"
                 )
             return db_user
         finally:
             db.close()
-    
+
     return role_checker
 
 
@@ -79,6 +81,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
         content={"detail": exc.detail},
     )
 
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -91,43 +94,54 @@ app.add_middleware(
 app.include_router(mainrouter, prefix="/api")
 app.include_router(chatbot.router)  # không cần prefix nữa vì chatbot.py đã có prefix="/chatbot"
 
-
 # Mount static
 BASE_DIR = Path(__file__).resolve().parent.parent
 app.mount("/static", StaticFiles(directory=BASE_DIR / "Frontend" / "static"), name="static")
 
 templates = Jinja2Templates(directory=BASE_DIR / "Frontend" / "template")
 
+
 @app.get("/", response_class=HTMLResponse)
 async def entry(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
+
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
+
 @app.get("/student", response_class=HTMLResponse)
-async def student_page(request: Request, user = Depends(require_role("student"))):
+async def student_page(request: Request, user=Depends(require_role("student"))):
     return templates.TemplateResponse("studentHome.html", {"request": request})
 
+
 @app.get("/teacher", response_class=HTMLResponse)
-async def teach_page(request: Request, user = Depends(require_role("teacher"))):
+async def teach_page(request: Request, user=Depends(require_role("teacher"))):
     return templates.TemplateResponse("teacherHome.html", {"request": request})
 
+
 @app.get("/admin", response_class=HTMLResponse)
-async def admin_page(request: Request, user = Depends(require_role("admin"))):
+async def admin_page(request: Request, user=Depends(require_role("admin"))):
     return templates.TemplateResponse("admin.html", {"request": request})
+
 
 @app.get("/editProfile", response_class=HTMLResponse)
 async def edit_profile_page(request: Request):
     return templates.TemplateResponse("profile.html", {"request": request})
 
 
+@app.get("/profile", response_class=HTMLResponse)
+async def profile_page(request: Request):
+    return templates.TemplateResponse("profile.html", {"request": request})
+
 
 @app.get("/403", response_class=HTMLResponse)
 async def access_denied_page(request: Request):
     return templates.TemplateResponse("403.html", {"request": request})
 
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="127.0.0.1", port=8000, log_level="info")
