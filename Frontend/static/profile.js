@@ -62,20 +62,40 @@ async function fetchProfile() {
 
 async function updateProfile(body) {
     try {
+        console.log("📤 Gửi dữ liệu cập nhật:", body);
         const res = await fetch('/api/me', {
             method: 'PUT',
             headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}`, 'Content-Type': 'application/json' },
             body: JSON.stringify(body)
         });
+
+        const responseData = await res.json();
+        console.log("📥 Response từ server:", responseData);
+
         if (!res.ok) {
-            const err = await res.json().catch(() => ({}));
-            throw new Error(err.detail || 'Cập nhật thất bại');
+            throw new Error(responseData.detail || 'Cập nhật thất bại');
         }
-        makeNotif('Cập nhật hồ sơ thành công');
+
+        // ✅ Cập nhật localStorage ngay lập tức
+        localStorage.setItem('userInfo', JSON.stringify(responseData));
+        console.log("✅ Cập nhật localStorage thành công");
+
+        makeNotif('✅ Cập nhật hồ sơ thành công');
+        await new Promise(resolve => setTimeout(resolve, 500));
         await fetchProfile();
     } catch (err) {
+        console.error("❌ Lỗi cập nhật:", err);
         handleError(err);
     }
+}
+
+// ✅ Hàm đăng xuất
+function logout() {
+    console.log("🚪 Đang đăng xuất...");
+    localStorage.removeItem("token");
+    localStorage.removeItem("userInfo");
+    console.log("✅ Đã xóa token");
+    window.location.href = "/login";
 }
 
 document.addEventListener('DOMContentLoaded', () => fetchProfile());
@@ -100,9 +120,15 @@ document.getElementById('profileForm').addEventListener('submit', async (e) => {
 
     if (studentVisible) {
         const studentCodeForm = document.getElementById('student-code-form').value;
-        if (studentCodeForm) payload.student_code = studentCodeForm;
+        if (studentCodeForm) {
+            payload.student_code = studentCodeForm;
+            console.log("📝 Thêm student_code:", studentCodeForm);
+        }
         const b = document.getElementById('birthdate').value;
-        if (b) payload.birthdate = b;
+        if (b) {
+            payload.birthdate = b;
+            console.log("📝 Thêm birthdate:", b);
+        }
     }
      if (teacherVisible) {
         payload.department = document.getElementById('department').value || null;
