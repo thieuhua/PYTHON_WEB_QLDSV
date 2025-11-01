@@ -38,6 +38,8 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     role: Optional[UserRole] = None
     password: Optional[str] = None
+    # [SỬA] Thêm student_code để cho phép update mã sinh viên
+    student_code: Optional[str] = None
     # student/teacher profile fields for updating
     birthdate: Optional[date] = None
     department: Optional[str] = None
