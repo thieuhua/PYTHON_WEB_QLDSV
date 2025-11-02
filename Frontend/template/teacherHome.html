@@ -70,9 +70,9 @@
 
         <div class="import-export">
           <input type="file" id="import-file" accept=".csv" style="display:none" onchange="importCSV(event)">
-          <button class="create-btn small" onclick="triggerImport()">Import CSV</button>
-          <button class="create-btn small" onclick="exportCSV()">Export CSV</button>
-          <button class="create-btn small danger" onclick="confirmDeleteClass()">Xóa lớp</button>
+          <button class="create-btn small" onclick="triggerImport()">📥 Import CSV</button>
+          <button class="create-btn small" onclick="exportCSV()">📤 Export CSV</button>
+          <button class="create-btn small danger" onclick="confirmDeleteClass()">🗑️ Xóa lớp</button>
         </div>
 
         <div class="add-student">
@@ -87,11 +87,10 @@
 
         <div class="student-list">
           <h4>Danh sách sinh viên</h4>
-          <button class="create-btn small danger" onclick="deleteSelectedStudents()">Xóa đã chọn</button>
           <table class="student-table">
             <thead>
               <tr>
-                <th><input type="checkbox" id="select-all" onchange="toggleSelectAll(this)"></th>
+                <th>STT</th>
                 <th>Họ tên</th>
                 <th>Mã SV</th>
                 <th>Chuyên cần</th>
