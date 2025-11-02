@@ -24,37 +24,62 @@ def get_db():
 
 @router.post("/register")
 def register(user: UserAuth, db: Session = Depends(get_db)):
-    # [SỬA] Tạo user với role = student mặc định
-    hashedpassw: str = jwt_auth.hash_password(user.password)
-    user_db = schemas.UserCreate(
-        username=user.username,
-        password=hashedpassw,
-        full_name="NoName",
-        role="student"  # [SỬA] Set role mặc định là student
-    )
     try:
-        new_user = crud.create_user(db, user_db)
+        # Kiểm tra username đã tồn tại chưa
+        existing_user = crud.get_user_by_username(db, user.username)
+        if existing_user:
+            raise HTTPException(status_code=400, detail="Username đã tồn tại")
 
-        # [SỬA] Tự động tạo student profile với mã SV
-        student_code = f"ST{new_user.user_id:04d}"
-        student_create = schemas.StudentCreate(
-            user_id=new_user.user_id,
+        # Tạo user object
+        hashedpassw: str = jwt_auth.hash_password(user.password)
+        db_user = models.User(
+            username=user.username,
+            password=hashedpassw,
+            full_name="NoName",
+            email=None,
+            role=models.UserRole.student
+        )
+        db.add(db_user)
+        db.flush()  # Lấy user_id nhưng chưa commit
+
+        # Tạo student profile với mã tự động
+        student_code = f"ST{db_user.user_id:04d}"
+        db_student = models.Student(
+            student_id=db_user.user_id,
             student_code=student_code,
             birthdate=None
         )
-        crud.create_student(db, student_create)
+        db.add(db_student)
 
+        # Commit cả user và student cùng lúc
+        db.commit()
+        db.refresh(db_user)
+
+        print(f"✅ Đã tạo user '{user.username}' và student profile với mã: {student_code}")
+
+        token = jwt_auth.create_token({"username": db_user.username, "password": db_user.password})
+
+        return {
+            "token": token,
+            "message": "Đăng ký thành công",
+            "username": user.username
+        }
+
+    except HTTPException:
+        db.rollback()
+        raise
     except Exception as e:
-        print("Lỗi khi tạo user:", e)
-        raise HTTPException(400)
+        db.rollback()
+        print("❌ Lỗi khi tạo user:", str(e))
+        import traceback
+        traceback.print_exc()
 
-    token = jwt_auth.create_token({"username": user_db.username, "password": user_db.password})
+        # Kiểm tra lỗi duplicate
+        error_msg = str(e).lower()
+        if 'unique' in error_msg or 'duplicate' in error_msg:
+            raise HTTPException(status_code=400, detail="Username hoặc mã sinh viên đã tồn tại")
 
-    return {
-        "token": token,
-        "message": "Đăng ký thành công",
-        "username": user.username
-    }
+        raise HTTPException(status_code=400, detail=f"Lỗi đăng ký: {str(e)}")
 
 
 @router.post("/login")
@@ -111,7 +136,21 @@ def update_me(update: schemas.UserUpdate, user: dict = Depends(jwt_auth.auth), d
         if student:
             # [SỬA] Cho phép update student_code và birthdate khi student đã tồn tại
             if 'student_code' in data:
-                student.student_code = data.pop('student_code')
+                new_code = data.pop('student_code')
+                # Kiểm tra mã không được rỗng
+                if new_code and new_code.strip():
+                    new_code = new_code.strip()
+                    # Kiểm tra xem mã mới có trùng với mã khác không (trừ mã hiện tại)
+                    existing = db.query(models.Student).filter(
+                        models.Student.student_code == new_code,
+                        models.Student.student_id != student.student_id
+                    ).first()
+                    if existing:
+                        raise HTTPException(status_code=400, detail=f"Mã sinh viên '{new_code}' đã tồn tại")
+                    student.student_code = new_code
+                elif new_code == '' or new_code is None:
+                    # Nếu gửi chuỗi rỗng hoặc None, không update (giữ nguyên mã cũ)
+                    pass
             if 'birthdate' in data:
                 student.birthdate = data.pop('birthdate')
         else:
@@ -140,8 +179,17 @@ def update_me(update: schemas.UserUpdate, user: dict = Depends(jwt_auth.auth), d
             except Exception as e:
                 raise HTTPException(status_code=400, detail=f"Failed to create teacher profile: {e}")
 
-    db.commit()
-    db.refresh(db_user)
+    try:
+        db.commit()
+        db.refresh(db_user)
+    except Exception as e:
+        db.rollback()
+        # Kiểm tra nếu là lỗi duplicate key
+        error_msg = str(e).lower()
+        if 'unique' in error_msg or 'duplicate' in error_msg:
+            raise HTTPException(status_code=400, detail="Mã sinh viên hoặc email đã tồn tại")
+        raise HTTPException(status_code=500, detail=f"Lỗi cập nhật: {str(e)}")
+
     return db_user
 
 

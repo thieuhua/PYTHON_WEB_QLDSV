@@ -119,7 +119,7 @@ document.getElementById('profileForm').addEventListener('submit', async (e) => {
     const teacherVisible = teacherFieldsEl && getComputedStyle(teacherFieldsEl).display !== 'none';
 
     if (studentVisible) {
-        const studentCodeForm = document.getElementById('student-code-form').value;
+        const studentCodeForm = document.getElementById('student-code-form').value.trim();
         if (studentCodeForm) {
             payload.student_code = studentCodeForm;
             console.log("📝 Thêm student_code:", studentCodeForm);
