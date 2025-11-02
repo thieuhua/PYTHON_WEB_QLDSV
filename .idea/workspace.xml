@@ -5,13 +5,29 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="51292d78-f5a8-4909-afd8-e04dc72a6d2c" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/copilotDiffState.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/FIX_REGISTER.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_update_student.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/CHANGELOG_CLASS_MANAGEMENT.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/CHANGELOG_IMPORT_EXPORT.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/CHECKLIST_TEST_EXPORT.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/CLEAR_CACHE_AND_TEST.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/DEBUG_EXPORT_ERROR.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/FIX_403_EXPORT_ERROR.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/FIX_LATIN1_ENCODING_ERROR.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HUONG_DAN_IMPORT_EXPORT.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/HUONG_DAN_SU_DUNG_QUAN_LY_LOP.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/QUICKSTART_IMPORT_EXPORT.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/add_max_students_column.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sample_import.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_class_management.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_export_debug.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_export_function.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_export_simple.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Frontend/static/login.js" beforeDir="false" afterPath="$PROJECT_DIR$/Frontend/static/login.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Frontend/static/profile.js" beforeDir="false" afterPath="$PROJECT_DIR$/Frontend/static/profile.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/routers/api.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/routers/api.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Frontend/static/teacherHome.js" beforeDir="false" afterPath="$PROJECT_DIR$/Frontend/static/teacherHome.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Frontend/template/teacherHome.html" beforeDir="false" afterPath="$PROJECT_DIR$/Frontend/template/teacherHome.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/db/models.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/db/models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/db/schemas.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/db/schemas.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/db/teacher_crud.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/db/teacher_crud.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/routers/teacher.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/routers/teacher.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -138,6 +154,8 @@
       <workItem from="1761933099342" duration="1711000" />
       <workItem from="1761985818334" duration="4258000" />
       <workItem from="1762082785249" duration="771000" />
+      <workItem from="1762105238161" duration="215000" />
+      <workItem from="1762105471894" duration="6516000" />
     </task>
     <servers />
   </component>
