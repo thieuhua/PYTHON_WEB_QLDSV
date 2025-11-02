@@ -32,7 +32,6 @@ body {
     min-height: 100vh;
 }
 
-/* Header */
 .header {
     grid-area: header;
     background: linear-gradient(90deg, var(--main-color), var(--secondary-color));
@@ -44,6 +43,30 @@ body {
     box-shadow: 0 4px 8px var(--shadow-color);
 }
 .header .logo { font-size: 1.6rem; font-weight: 600; }
+
+.header-buttons {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.edit-profile-btn {
+    background-color: white;
+    color: var(--main-color);
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: var(--transition);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+.edit-profile-btn:hover {
+    background-color: var(--accent-color);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px var(--shadow-color);
+}
+
 .logout-btn {
     background-color: white;
     color: var(--main-color);
@@ -52,6 +75,8 @@ body {
     border-radius: 20px;
     cursor: pointer;
     transition: var(--transition);
+    font-weight: 600;
+    font-size: 0.9rem;
 }
 .logout-btn:hover { background-color: var(--accent-color); }
 

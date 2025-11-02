@@ -225,6 +225,12 @@ function logout() {
     window.location.href = "/login";
 }
 
+// ====== HÀM CHỈNH SỬA THÔNG TIN ======
+function editProfile() {
+    console.log("✏️ Chuyển hướng tới trang chỉnh sửa thông tin...");
+    window.location.href = "/editProfile";
+}
+
 // Hiển thị thông tin user
 function displayUserInfo() {
     const token = getToken();
