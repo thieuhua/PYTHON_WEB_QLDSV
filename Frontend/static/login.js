@@ -30,12 +30,21 @@ async function postData(url = "", data = {}) {
         body: JSON.stringify(data)
     });
 
-    if (!res.ok) {
-        const msg = await res.text();
-        console.error("❌ API Error:", msg);
-        throw new Error(msg || `Lỗi ${res.status}`);
+    // Luôn parse JSON trước
+    let responseData;
+    try {
+        responseData = await res.json();
+    } catch (e) {
+        responseData = { detail: await res.text() };
     }
-    return res.json();
+
+    if (!res.ok) {
+        const errorMsg = responseData.detail || responseData.message || `Lỗi ${res.status}`;
+        console.error("❌ API Error:", errorMsg, responseData);
+        throw new Error(errorMsg);
+    }
+
+    return responseData;
 }
 
 // Hàm lưu token và thông tin user
