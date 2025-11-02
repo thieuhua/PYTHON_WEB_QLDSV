@@ -1,4 +1,4 @@
-# backend/routers/teacher.py - FIXED FULL VERSION
+# backend/routers/teacher.py - FIXED VERSION
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from typing import List
 from sqlalchemy.orm import Session
@@ -14,7 +14,7 @@ router = APIRouter(
 )
 
 
-# ✅ SCHEMA CHO CẬP NHẬT ĐIỂM
+# ✅ THÊM SCHEMA MỚI CHO GRADE UPDATE
 class GradeUpdateRequest(BaseModel):
     student_id: int
     class_id: int
@@ -32,7 +32,7 @@ class GradeUpdateRequest(BaseModel):
         }
 
 
-# ✅ DEPENDENCY - LẤY GIẢNG VIÊN TỪ TOKEN
+# --- Dependency: get current teacher user from Authorization header (Bearer <token>) ---
 def get_current_teacher(request: Request, db: Session = Depends(get_db)):
     token = None
     token = request.cookies.get("token")
@@ -48,7 +48,7 @@ def get_current_teacher(request: Request, db: Session = Depends(get_db)):
         username = payload.get("username")
         if not username:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
-    except Exception:
+    except Exception as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
     db_user = crud.get_user_by_username(db, username)
@@ -59,31 +59,24 @@ def get_current_teacher(request: Request, db: Session = Depends(get_db)):
     return db_user
 
 
-# ================== ROUTES ==================
+# --- Routes ---
 
 @router.get("/classes", summary="Get classes for current teacher")
 def list_classes(current_user: models.User = Depends(get_current_teacher), db: Session = Depends(get_db)):
     teacher_id = current_user.user_id
     cls = teacher_crud.get_teacher_classes(db, teacher_id)
-
-    result = []
-    for c in cls:
-        # ✅ Đếm số sinh viên trong lớp
-        student_count = db.query(models.Enrollment).filter(models.Enrollment.class_id == c.class_id).count()
-
-        result.append({
+    return [
+        {
             "class_id": c.class_id,
             "class_name": c.class_name,
             "year": c.year,
             "semester": c.semester,
-            "current_students": student_count
-        })
-    return result
+        } for c in cls
+    ]
 
 
 @router.post("/classes", summary="Create class and assign to current teacher")
-def create_class(class_in: schemas.ClassCreate,
-                 current_user: models.User = Depends(get_current_teacher),
+def create_class(class_in: schemas.ClassCreate, current_user: models.User = Depends(get_current_teacher),
                  db: Session = Depends(get_db)):
     teacher_id = current_user.user_id
     newc = teacher_crud.create_class_for_teacher(db, teacher_id, class_in)
@@ -91,9 +84,7 @@ def create_class(class_in: schemas.ClassCreate,
 
 
 @router.get("/classes/{class_id}", summary="Get class detail (students + grades)")
-def get_class(class_id: int,
-              current_user: models.User = Depends(get_current_teacher),
-              db: Session = Depends(get_db)):
+def get_class(class_id: int, current_user: models.User = Depends(get_current_teacher), db: Session = Depends(get_db)):
     ta = db.query(models.TeachingAssignment).filter(
         models.TeachingAssignment.class_id == class_id,
         models.TeachingAssignment.teacher_id == current_user.user_id
@@ -108,9 +99,7 @@ def get_class(class_id: int,
 
 
 @router.post("/classes/{class_id}/students", summary="Add (or create) student and enroll into class")
-def add_student(class_id: int,
-                payload: dict,
-                current_user: models.User = Depends(get_current_teacher),
+def add_student(class_id: int, payload: dict, current_user: models.User = Depends(get_current_teacher),
                 db: Session = Depends(get_db)):
     full_name = payload.get("full_name")
     student_code = payload.get("student_code")
@@ -129,9 +118,7 @@ def add_student(class_id: int,
 
 
 @router.delete("/classes/{class_id}/students/{student_id}", summary="Unenroll student from a class")
-def delete_student(class_id: int,
-                   student_id: int,
-                   current_user: models.User = Depends(get_current_teacher),
+def delete_student(class_id: int, student_id: int, current_user: models.User = Depends(get_current_teacher),
                    db: Session = Depends(get_db)):
     ta = db.query(models.TeachingAssignment).filter(
         models.TeachingAssignment.class_id == class_id,
@@ -146,15 +133,19 @@ def delete_student(class_id: int,
     return {"ok": True}
 
 
+# ✅ SỬA ENDPOINT NÀY - Dùng schema mới và xử lý đúng
 @router.post("/classes/{class_id}/grades", summary="Save/update grades (bulk)")
-def save_grades(class_id: int,
-                grades: List[GradeUpdateRequest],
-                current_user: models.User = Depends(get_current_teacher),
-                db: Session = Depends(get_db)):
+def save_grades(
+        class_id: int,
+        grades: List[GradeUpdateRequest],  # ✅ Dùng schema mới
+        current_user: models.User = Depends(get_current_teacher),
+        db: Session = Depends(get_db)
+):
     """
     Update điểm cho sinh viên trong lớp
     Body: List of {student_id, class_id, subject, score}
     """
+    # Verify teacher assigned to class
     ta = db.query(models.TeachingAssignment).filter(
         models.TeachingAssignment.class_id == class_id,
         models.TeachingAssignment.teacher_id == current_user.user_id
@@ -162,6 +153,7 @@ def save_grades(class_id: int,
     if not ta:
         raise HTTPException(status_code=403, detail="You are not assigned to this class")
 
+    # ✅ Validate class_id khớp với URL
     for grade_data in grades:
         if grade_data.class_id != class_id:
             raise HTTPException(
@@ -169,7 +161,9 @@ def save_grades(class_id: int,
                 detail=f"class_id in body ({grade_data.class_id}) must match URL parameter ({class_id})"
             )
 
+    # ✅ Convert sang dict để gọi teacher_crud
     payload = [g.model_dump() for g in grades]
+
     try:
         teacher_crud.save_grades(db, class_id, payload)
         return {
@@ -179,59 +173,3 @@ def save_grades(class_id: int,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save grades: {str(e)}")
-
-
-@router.delete("/classes/{class_id}", summary="Delete a class and its enrollments")
-def delete_class(class_id: int,
-                 current_user: models.User = Depends(get_current_teacher),
-                 db: Session = Depends(get_db)):
-    """
-    Xóa lớp học do giáo viên sở hữu, bao gồm enrollment, assignment, join code, và điểm.
-    """
-    # Kiểm tra quyền sở hữu
-    ta = (
-        db.query(models.TeachingAssignment)
-        .filter(
-            models.TeachingAssignment.class_id == class_id,
-            models.TeachingAssignment.teacher_id == current_user.user_id
-        )
-        .first()
-    )
-    if not ta:
-        raise HTTPException(
-            status_code=403,
-            detail="You are not assigned to this class or lack permission"
-        )
-
-    cls = db.query(models.Class).filter(models.Class.class_id == class_id).first()
-    if not cls:
-        raise HTTPException(status_code=404, detail="Class not found")
-
-    try:
-        # Xóa Enrollment
-        db.query(models.Enrollment).filter(models.Enrollment.class_id == class_id).delete(synchronize_session=False)
-
-        # Xóa TeachingAssignment
-        db.query(models.TeachingAssignment).filter(models.TeachingAssignment.class_id == class_id).delete(synchronize_session=False)
-
-        # Xóa JoinCode (mã tham gia lớp)
-        if hasattr(models, "JoinCode"):
-            db.query(models.JoinCode).filter(models.JoinCode.class_id == class_id).delete(synchronize_session=False)
-        elif hasattr(models, "Join_Code"):
-            db.query(models.Join_Code).filter(models.Join_Code.class_id == class_id).delete(synchronize_session=False)
-
-        # Xóa bảng điểm (nếu có)
-        if hasattr(models, "Grade"):
-            db.query(models.Grade).filter(models.Grade.class_id == class_id).delete(synchronize_session=False)
-        elif hasattr(models, "Score"):
-            db.query(models.Score).filter(models.Score.class_id == class_id).delete(synchronize_session=False)
-
-        # Xóa lớp
-        db.delete(cls)
-        db.commit()
-        return {"ok": True, "message": f"Class {class_id} deleted successfully"}
-
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to delete class: {str(e)}")
-

@@ -1,129 +1,117 @@
 <!doctype html>
 <html lang="vi">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Hệ thống quản lý lớp học và sinh viên - Teacher</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hệ thống quản lý lớp học và sinh viên</title>
 
-  <!-- CSS đồng bộ với studentHome -->
-  <link rel="stylesheet" href="/static/teacherHome.css">
-  <!-- scripts chung -->
-  <script src="/static/login.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- ✅ Dùng url_for đúng cú pháp FastAPI -->
+    <link rel="stylesheet" href="{{ url_for('static', path='teacherHome.css') }}">
+    <script defer src="{{ url_for('static', path='teacherHome.js') }}"></script>
+    <script src="/static/login.js"></script>
 </head>
+
 <body>
-<div class="container">
-  <!-- HEADER -->
+  <!-- Header -->
   <header class="header">
-    <div class="logo" id="system-name">Hệ thống quản lý lớp học</div>
-    <div class="header-buttons">
-      <button class="edit-profile-btn" onclick="editProfile()">Chỉnh sửa thông tin</button>
-      <button class="logout-btn" onclick="logout()">Đăng xuất</button>
+    <div class="header-content">
+      <div class="logo"> Hệ thống quản lý lớp học</div>
+      <nav class="nav-menu">
+       
+      </nav>
+      <div class="header-buttons">
+        <button class="edit-profile-btn" onclick="editProfile()">Chỉnh sửa thông tin</button>
+        <button class="logout-btn" onclick="logout()">Đăng xuất</button>
+      </div>
     </div>
   </header>
 
-  <!-- SIDEBAR -->
-  <aside class="sidebar">
-  <div class="teacher-card">
-    <div class="avatar">👩‍🏫</div>
+  <div class="container">
+    <!-- Trang chủ: Tạo lớp & danh sách -->
+    <section id="home" class="section active">
+      <div class="create-class-form">
+        <h2 class="form-title">Tạo lớp học mới</h2>
+        <form id="create-class-form">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Tên lớp học</label>
+              <input type="text" id="class-name" class="form-input" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Mã lớp</label>
+              <input type="text" id="class-code" class="form-input" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Số lượng tối đa</label>
+              <input type="number" id="max-students" class="form-input" min="1" max="200" required />
+            </div>
+          </div>
+          <button type="submit" class="create-btn">Tạo lớp học</button>
+        </form>
+      </div>
 
-    <div class="teacher-info">
-      <p><span class="info-label">Giảng viên:</span></p>
-      <p id="teacher-name" class="info-value">Nguyễn Văn Giáo</p>
-
-      <p><span class="info-label">Email:</span></p>
-      <p id="teacher-email" class="info-value">teacher1@school.edu.vn</p>
-    </div>
-
-    <hr class="sidebar-divider" />
-
-    <div class="create-class-wrapper">
-      <h4 class="section-title">Tạo lớp mới</h4>
-      <form id="create-class-form" class="sidebar-form">
-        <input id="class-name" placeholder="Tên lớp" required />
-        <input id="class-code" placeholder="Mã lớp (tùy chọn)" />
-        <button class="create-btn" type="submit">Tạo lớp</button>
-      </form>
-    </div>
+      <div class="classes-grid" id="classes-grid"></div>
+    </section>
   </div>
-</aside>
 
-
-  <!-- MAIN -->
-  <main class="main-content">
-    <h1 class="page-title">Danh sách lớp học</h1>
-    <div id="classes-grid" class="classes-grid"></div>
-  </main>
-
-  <!-- FOOTER -->
-  <footer class="footer">© 2025 Hệ thống quản lý lớp học</footer>
-</div>
-
-<!-- CLASS DETAIL MODAL -->
-<div id="class-modal" class="modal hidden" role="dialog" aria-modal="true">
-  <div class="modal-dialog">
-    <div class="modal-header">
-      <h3 id="modal-class-name">Tên lớp</h3>
-      <button class="close-btn" onclick="closeModal()">✕</button>
-    </div>
-
-    <div class="modal-body">
-      <div class="modal-top" style="display:flex;gap:12px;flex-wrap:wrap;">
-        <div><b>Mã lớp:</b> <span id="modal-class-code">—</span></div>
-        <div><b>Mã tham gia:</b> <span id="modal-class-join-code">—</span></div>
-        <div><b>Tổng sinh viên:</b> <span id="modal-count">0</span></div>
+  <!-- Modal chi tiết lớp -->
+  <div id="class-modal" class="modal hidden" role="dialog" aria-modal="true">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="modal-class-name"></h3>
+        <button class="close-btn" onclick="closeModal()">✕</button>
       </div>
-
-      <div class="import-export" style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
-        <input type="file" id="import-file" accept=".csv" style="display:none" onchange="importCSV(event)">
-        <button class="create-btn small" onclick="triggerImport()">Import CSV</button>
-        <button class="create-btn small" onclick="exportCSV()">Export CSV</button>
-        <button class="create-btn small danger" id="delete-class-btn" onclick="confirmDeleteClass()">Xóa lớp</button>
-      </div>
-
-      <div class="add-student" style="margin-top:14px;">
-        <h4>Thêm sinh viên thủ công</h4>
-        <div class="form-grid small">
-          <input type="text" id="add-student-name" placeholder="Họ và tên" />
-          <input type="text" id="add-student-id" placeholder="Mã SV" />
-          <button id="add-student-btn" class="create-btn small">Thêm</button>
+      <div class="modal-body">
+        <div class="modal-top">
+          <div><b>Mã lớp:</b> <span id="modal-class-code"></span></div>
+          <div><b>Mã tham gia:</b> <span id="modal-class-join-code"></span></div>
+          <div><b>SV:</b> <span id="modal-count"></span>/<span id="modal-max"></span></div>
         </div>
-        <div id="add-student-warning" class="small-warning"></div>
-      </div>
 
-      <div class="student-list" style="margin-top:14px;">
-        <h4>Danh sách sinh viên</h4>
-        <div style="margin-bottom:8px;display:flex;gap:8px;align-items:center;">
+        <div class="import-export">
+          <input type="file" id="import-file" accept=".csv" style="display:none" onchange="importCSV(event)">
+          <button class="create-btn small" onclick="triggerImport()">Import CSV</button>
+          <button class="create-btn small" onclick="exportCSV()">Export CSV</button>
+          <button class="create-btn small danger" onclick="confirmDeleteClass()">Xóa lớp</button>
+        </div>
+
+        <div class="add-student">
+          <h4>Thêm sinh viên</h4>
+          <div class="form-grid small">
+            <input type="text" id="student-name" placeholder="Họ tên" />
+            <input type="text" id="student-id" placeholder="Mã SV" />
+            <button id="add-student-btn" class="create-btn small">Thêm</button>
+          </div>
+          <div id="add-student-warning" class="small-warning"></div>
+        </div>
+
+        <div class="student-list">
+          <h4>Danh sách sinh viên</h4>
           <button class="create-btn small danger" onclick="deleteSelectedStudents()">Xóa đã chọn</button>
-          <span style="color:#666;font-size:0.95rem;">(Chọn checkbox để xóa nhiều)</span>
+          <table class="student-table">
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="select-all" onchange="toggleSelectAll(this)"></th>
+                <th>Họ tên</th>
+                <th>Mã SV</th>
+                <th>Chuyên cần</th>
+                <th>Giữa kỳ</th>
+                <th>Cuối kỳ</th>
+                <th>Trung bình</th>
+                <th>Hành động</th>
+              </tr>
+            </thead>
+            <tbody id="student-tbody"></tbody>
+          </table>
         </div>
-
-        <table class="student-table" aria-describedby="modal-class-name">
-          <thead>
-            <tr>
-              <th style="width:5%;"><input type="checkbox" id="select-all" onchange="toggleSelectAll(this)"></th>
-              <th style="width:5%;">#</th>
-              <th style="width:30%;">Họ tên</th>
-              <th style="width:15%;">Mã SV</th>
-              <th style="width:10%;">Chuyên cần</th>
-              <th style="width:10%;">Giữa kỳ</th>
-              <th style="width:10%;">Cuối kỳ</th>
-              <th style="width:8%;">Trung bình</th>
-              <th style="width:7%;">Hành động</th>
-            </tr>
-          </thead>
-          <tbody id="student-tbody"></tbody>
-        </table>
+      </div>
+      <div class="modal-footer">
+        <button class="create-btn" onclick="closeModal()">Đóng</button>
       </div>
     </div>
-
-    <div class="modal-footer">
-      <button class="create-btn" onclick="closeModal()">Đóng</button>
-    </div>
   </div>
-</div>
 
-<div id="notif-container"></div>
-<script src="/static/teacherHome.js" defer></script>
+  <div id="notif-container"></div>
+  <script src="teacherHome.js"></script>
 </body>
 </html>
