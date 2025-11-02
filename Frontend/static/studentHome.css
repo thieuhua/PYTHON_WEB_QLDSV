@@ -1,37 +1,26 @@
-/* ============================================
-   🌟 HỆ THỐNG QUẢN LÝ SINH VIÊN — MODERN UI 2025
-   Phiên bản: mềm mại + header dark mode + màu đỏ hồng chủ đạo
-   ============================================ */
-
-/* ----------- Biến màu ----------- */
 :root {
-    --main-color: #dc143c;
-    --secondary-color: #f75270;
-    --accent-color: #f7cac9;
-    --bg-light: #f9fafb;
-    --bg-dark: #1e1e1e;
-    --card-light: #ffffff;
-    --card-dark: #2a2a2a;
-    --text-dark: #333;
-    --text-light: #f5f5f5;
-    --border-light: #e5e5e5;
-    --border-dark: #444;
-    --radius: 16px;
-    --shadow: rgba(0, 0, 0, 0.1);
+    --main-color: #DC143C;
+    --secondary-color: #F75270;
+    --accent-color: #F7CAC9;
+    --light-bg: #FDEBD0;
+    --text-color: #333;
+    --shadow-color: rgba(0, 0, 0, 0.1);
     --transition: all 0.3s ease;
 }
 
-/* Reset */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
     font-family: "Poppins", sans-serif;
-    background-color: var(--bg-light);
-    color: var(--text-dark);
+    background-color: var(--light-bg);
+    color: var(--text-color);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
     transition: var(--transition);
 }
 
-/* ========== GRID LAYOUT ========== */
+/* Layout */
 .container {
     display: grid;
     grid-template-columns: 250px 1fr;
@@ -43,7 +32,6 @@ body {
     min-height: 100vh;
 }
 
-/* ========== HEADER ========== */
 .header {
     grid-area: header;
     background: linear-gradient(90deg, var(--main-color), var(--secondary-color));
@@ -52,137 +40,100 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    box-shadow: 0 4px 8px var(--shadow);
+    box-shadow: 0 4px 8px var(--shadow-color);
 }
-
-.logo { font-size: 1.5rem; font-weight: 600; }
+.header .logo { font-size: 1.6rem; font-weight: 600; }
 
 .header-buttons {
     display: flex;
-    align-items: center;
     gap: 10px;
+    align-items: center;
 }
 
-.header-buttons button {
-    background: white;
-    color: var(--main-color);
-    border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 0.9rem;
-    transition: var(--transition);
-}
-.header-buttons button:hover {
-    background-color: var(--accent-color);
-    transform: translateY(-2px);
-}
-
-/* Nút dark mode đặt trên header */
-.dark-mode-toggle {
+.edit-profile-btn {
     background-color: white;
     color: var(--main-color);
     border: none;
-    padding: 0.5rem 0.8rem;
-    border-radius: 50%;
-    font-size: 1.1rem;
+    padding: 0.6rem 1.2rem;
+    border-radius: 20px;
     cursor: pointer;
-    box-shadow: 0 2px 8px var(--shadow);
     transition: var(--transition);
+    font-weight: 600;
+    font-size: 0.9rem;
 }
-.dark-mode-toggle:hover {
+.edit-profile-btn:hover {
     background-color: var(--accent-color);
-    transform: scale(1.05);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px var(--shadow-color);
 }
 
-/* ========== SIDEBAR ========== */
+.logout-btn {
+    background-color: white;
+    color: var(--main-color);
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: var(--transition);
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+.logout-btn:hover { background-color: var(--accent-color); }
+
+/* Sidebar */
 .sidebar {
     grid-area: sidebar;
-    background-color: var(--card-light);
-    border-right: 1px solid var(--border-light);
-    box-shadow: 2px 0 8px var(--shadow);
+    background-color: white;
     padding: 1.5rem;
+    border-right: 2px solid var(--accent-color);
+    box-shadow: 2px 0 8px var(--shadow-color);
 }
 .avatar {
-    font-size: 3rem;
+    font-size: 4rem;
     background-color: var(--accent-color);
     border-radius: 50%;
     width: 80px; height: 80px;
     margin: 0 auto 1rem;
     display: flex; align-items: center; justify-content: center;
 }
-.info-item { margin-bottom: 0.5rem; }
+.info-item { margin-bottom: 0.4rem; }
 .info-label { font-weight: 600; color: var(--main-color); }
 
-.join-class-container {
-    display: flex; flex-direction: column; align-items: center;
-    margin-top: 1.2rem;
-}
-.code-input {
-    width: 85%;
-    padding: 0.6rem;
-    border: 1px solid var(--border-light);
-    border-radius: 8px;
-    font-size: 0.9rem;
-    outline: none;
-    transition: var(--transition);
-}
-.code-input:focus {
-    border-color: var(--main-color);
-    box-shadow: 0 0 4px rgba(220, 20, 60, 0.3);
-}
-.join-class-button {
-    background: linear-gradient(90deg, var(--main-color), var(--secondary-color));
-    color: white;
-    border: none;
-    border-radius: 20px;
-    padding: 0.5rem 1rem;
-    cursor: pointer;
-    font-weight: 600;
-    margin-top: 0.5rem;
-    transition: var(--transition);
-}
-.join-class-button:hover { transform: scale(1.05); }
-
-/* ========== MAIN ========== */
+/* Main */
 .main-content {
     grid-area: main;
     padding: 2rem;
-    background-color: var(--bg-light);
+    background-color: var(--light-bg);
 }
-.page-title {
-    font-size: 1.6rem;
-    color: var(--main-color);
-    margin-bottom: 1rem;
-    font-weight: 600;
-}
+.page-title { font-size: 1.8rem; color: var(--main-color); margin-bottom: 1.5rem; }
 
-/* ========== LỚP HỌC ========== */
+/* Classes grid */
 .classes-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 1.5rem;
 }
 .class-card {
-    background: var(--card-light);
-    border-radius: var(--radius);
-    box-shadow: 0 4px 8px var(--shadow);
+    background-color: white;
+    border-radius: 15px;
+    box-shadow: 0 4px 8px var(--shadow-color);
     padding: 1.2rem;
     transition: var(--transition);
     cursor: pointer;
 }
 .class-card:hover {
     transform: translateY(-5px);
-    border: 1px solid var(--main-color);
+    border: 2px solid var(--main-color);
 }
 .class-name {
-    color: var(--main-color);
-    font-weight: 600;
     font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--main-color);
+    margin-bottom: 0.5rem;
 }
-.class-code { color: #666; font-size: 0.9rem; }
+.class-code { font-size: 0.9rem; color: #555; margin-bottom: 0.6rem; }
 
+/* Progress bar */
 .progress-bar {
     height: 8px;
     background-color: var(--accent-color);
@@ -195,46 +146,44 @@ body {
     background: linear-gradient(90deg, var(--main-color), var(--secondary-color));
     transition: width 1s ease-in-out;
 }
-.progress-text {
-    margin-top: 0.4rem;
-    font-size: 0.8rem;
-    color: #666;
-}
-.dark-mode .progress-text { color: var(--text-light); }
 
-/* ========== BẢNG ĐIỂM & BIỂU ĐỒ ========== */
-.score-section, .chart-section {
-    background: var(--card-light);
-    border-radius: var(--radius);
-    box-shadow: 0 4px 10px var(--shadow);
-    padding: 1.5rem;
+/* Score table */
+.score-section {
     margin-top: 2rem;
+    background-color: white;
+    padding: 1.5rem;
+    border-radius: 15px;
+    box-shadow: 0 4px 10px var(--shadow-color);
 }
-.section-title {
-    color: var(--main-color);
-    margin-bottom: 1rem;
-    font-size: 1.1rem;
-    font-weight: 600;
-}
+.section-title { color: var(--main-color); margin-bottom: 1rem; }
 .score-table {
     width: 100%;
     border-collapse: collapse;
     text-align: center;
 }
 .score-table th {
-    background: var(--main-color);
+    background-color: var(--main-color);
     color: white;
     padding: 0.8rem;
 }
 .score-table td {
-    border-bottom: 1px solid var(--accent-color);
     padding: 0.6rem;
+    border-bottom: 1px solid var(--accent-color);
 }
 
-/* ========== FOOTER ========== */
+/* Chart */
+.chart-section {
+    margin-top: 2rem;
+    background-color: white;
+    padding: 1.5rem;
+    border-radius: 15px;
+    box-shadow: 0 4px 10px var(--shadow-color);
+}
+
+/* Footer */
 .footer {
     grid-area: footer;
-    background: var(--card-light);
+    background-color: white;
     text-align: center;
     padding: 1rem;
     font-size: 0.85rem;
@@ -242,44 +191,21 @@ body {
     border-top: 1px solid var(--accent-color);
 }
 
-/* ========== DARK MODE ========== */
-.dark-mode {
-    background-color: var(--bg-dark);
-    color: var(--text-light);
+/* Dark Mode + Button */
+.dark-mode { background-color: #222; color: #eee; }
+.dark-mode .class-card { background-color: #444; border-color: #555; }
+.dark-mode-toggle {
+    position: fixed; bottom: 20px; right: 25px;
+    background-color: var(--main-color);
+    color: white; border: none;
+    padding: 0.8rem;
+    border-radius: 50%;
+    font-size: 1.2rem;
+    cursor: pointer;
+    box-shadow: 0 4px 10px var(--shadow-color);
+    transition: var(--transition);
 }
-.dark-mode .header {
-    background: linear-gradient(90deg, #292929, #333);
-    color: #f5f5f5;
-}
-.dark-mode .sidebar {
-    background-color: var(--card-dark);
-    border-color: var(--border-dark);
-    color: var(--text-light);
-}
-.dark-mode .main-content {
-    background-color: #252525;
-}
-.dark-mode .class-card,
-.dark-mode .score-section,
-.dark-mode .chart-section,
-.dark-mode .footer {
-    background-color: var(--card-dark);
-    color: var(--text-light);
-    border-color: var(--border-dark);
-}
-.dark-mode .class-name { color: #ff8fa3; }
-.dark-mode .class-code { color: #bbb; }
-.dark-mode .score-table th {
-    background-color: #444;
-    color: #fff;
-}
-.dark-mode .score-table td { color: #ddd; border-color: #555; }
-.dark-mode .code-input {
-    background-color: #333;
-    color: #eee;
-    border: 1px solid #555;
-}
-.dark-mode .footer { color: #bbb; }
+.dark-mode-toggle:hover { transform: scale(1.1); background-color: var(--secondary-color); }
 
 /* Tooltip */
 .tooltip { position: relative; }
@@ -289,11 +215,55 @@ body {
     background-color: var(--main-color);
     color: white;
     font-size: 0.8rem;
-    padding: 0.3rem 0.6rem;
-    border-radius: 5px;
-    top: -30px; left: 50%;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    top: -35px; left: 50%;
     transform: translateX(-50%);
     opacity: 0;
     transition: var(--transition);
 }
 .tooltip:hover::after { opacity: 1; transform: translate(-50%, -8px); }
+
+.code-input {
+    padding:0.5rem;
+    margin-top:20px;
+    margin-bottom: 10px;
+    border-radius:8px;
+    align-items: center;
+    border:1px solid #e3e3e3;
+    font-size:0.95rem;
+}
+.join-class-button {
+    margin-left: 20%;
+    font-size: 0.95rem;
+    border: 2px solid transparent; 
+    padding: 10px 10px;
+    color: white;
+    border-radius: 20px;
+    background: linear-gradient(90deg, var(--main-color), var(--secondary-color));
+    text-align: center;
+    transition: all 0.2s ease; 
+}
+
+.join-class-button:hover { 
+    transform: scale(1.1); 
+    background-color: var(--secondary-color); 
+}
+
+.join-class-button:active {
+    transform: scale(0.95);
+}
+
+.join-class-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 1rem;
+}
+.join-class-container .code-input {
+    width: 80%;
+    margin: 0.5rem 0;
+}
+.join-class-container .join-class-button {
+    margin-left: 0;
+}
