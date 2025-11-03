@@ -62,14 +62,9 @@ async function fetchClasses() {
   }
 }
 
-async function createClass(name, year, semester, maxStudents) {
+async function createClass(name, year, semester) {
   try {
-    const body = {
-      class_name: name,
-      year,
-      semester,
-      max_students: maxStudents || 50  // Gửi max_students, mặc định 50
-    };
+    const body = { class_name: name, year, semester };
     const res = await fetch("/api/teacher/classes", {
       method: "POST",
       headers: getAuthHeaders(),
@@ -171,47 +166,6 @@ async function deleteStudentFromClass(student_id) {
     notify("Không thể xóa sinh viên", "error");
   }
 }
-
-// ====== XÓA LỚP HỌC ======
-async function confirmDeleteClass() {
-  if (!currentClass) {
-    notify("Không tìm thấy thông tin lớp học", "error");
-    return;
-  }
-
-  const studentCount = currentClass.students?.length || 0;
-  let message = `Bạn có chắc chắn muốn xóa lớp "${currentClass.class_name}"?`;
-
-  if (studentCount > 0) {
-    message += `\n\n⚠️ Lớp này có ${studentCount} sinh viên. Tất cả dữ liệu liên quan (sinh viên, điểm số) sẽ bị xóa!`;
-  }
-
-  if (!confirm(message)) return;
-
-  await deleteClass(currentClass.class_id);
-}
-
-async function deleteClass(classId) {
-  try {
-    const res = await fetch(`/api/teacher/classes/${classId}`, {
-      method: "DELETE",
-      headers: getAuthHeaders()
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.detail || "Không thể xóa lớp");
-    }
-
-    notify("✅ Đã xóa lớp học thành công");
-    closeModal();
-    await fetchClasses();
-  } catch (err) {
-    console.error(err);
-    notify(`Xóa lớp thất bại: ${err.message}`, "error");
-  }
-}
-
 
 // ====== HIỂN THỊ LỚP ======
 function renderClassCards() {
@@ -327,138 +281,6 @@ function onGradeEdit(studentId, inputElem) {
   updateStudentGrade(studentId, field, clamped);
 }
 
-// ====== IMPORT/EXPORT CSV ======
-function triggerImport() {
-  if (!currentClass) {
-    notify("Vui lòng mở lớp học trước", "error");
-    return;
-  }
-  document.getElementById("import-file").click();
-}
-
-async function importCSV(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  if (!file.name.endsWith('.csv')) {
-    notify("Vui lòng chọn file CSV", "error");
-    return;
-  }
-
-  if (!currentClass) {
-    notify("Vui lòng mở lớp học trước", "error");
-    return;
-  }
-
-  try {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    const res = await fetch(`/api/teacher/classes/${currentClass.class_id}/import`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${getToken()}`
-      },
-      body: formData
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      throw new Error(errorData.detail || "Import thất bại");
-    }
-
-    const result = await res.json();
-
-    // Show detailed result
-    let message = `✅ Import thành công: ${result.success_count} sinh viên`;
-    if (result.error_count > 0) {
-      message += `\n⚠️ Có ${result.error_count} lỗi`;
-      if (result.errors && result.errors.length > 0) {
-        message += ":\n" + result.errors.slice(0, 5).join("\n");
-        if (result.errors.length > 5) {
-          message += `\n... và ${result.errors.length - 5} lỗi khác`;
-        }
-      }
-    }
-
-    alert(message);
-
-    // Reload class detail
-    await fetchClassDetail(currentClass.class_id);
-
-    // Clear file input
-    event.target.value = '';
-
-  } catch (err) {
-    console.error(err);
-    notify(`Import thất bại: ${err.message}`, "error");
-    event.target.value = '';
-  }
-}
-
-async function exportCSV() {
-  console.log("🔍 Export CSV clicked");
-
-  if (!currentClass) {
-    console.error("❌ currentClass is null");
-    notify("Vui lòng mở lớp học trước", "error");
-    return;
-  }
-
-  console.log("📊 Current class:", currentClass);
-  console.log("🔑 Token:", getToken() ? "Present" : "Missing");
-
-  try {
-    const url = `/api/teacher/classes/${currentClass.class_id}/export`;
-    console.log("📤 Fetching:", url);
-
-    const res = await fetch(url, {
-      headers: getAuthHeaders()
-    });
-
-    console.log("📊 Response status:", res.status);
-    console.log("📊 Response headers:", Object.fromEntries(res.headers.entries()));
-
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      console.error("❌ Export failed:", errorData);
-      throw new Error(errorData.detail || "Export thất bại");
-    }
-
-    // Get filename from Content-Disposition header
-    const contentDisposition = res.headers.get('Content-Disposition');
-    let filename = 'students.csv';
-    if (contentDisposition) {
-      const matches = /filename="?([^"]+)"?/.exec(contentDisposition);
-      if (matches && matches[1]) {
-        filename = matches[1];
-      }
-    }
-    console.log("📄 Filename:", filename);
-
-    // Download file
-    const blob = await res.blob();
-    console.log("📄 Blob size:", blob.size, "bytes");
-    console.log("📄 Blob type:", blob.type);
-
-    const url2 = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url2;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    window.URL.revokeObjectURL(url2);
-    document.body.removeChild(a);
-
-    console.log("✅ Export successful");
-    notify("✅ Export thành công");
-
-  } catch (err) {
-    console.error("❌ Export error:", err);
-    notify(`Export thất bại: ${err.message}`, "error");
-  }
-}
-
 document.addEventListener("DOMContentLoaded", () => {
   // Nạp danh sách lớp
   fetchClasses();
@@ -468,14 +290,10 @@ document.addEventListener("DOMContentLoaded", () => {
     form.addEventListener("submit", (e) => {
       e.preventDefault();
       const name = document.getElementById("class-name").value.trim();
-      const maxStudents = parseInt(document.getElementById("max-students").value) || 50;
       const year = new Date().getFullYear();
       const semester = 1;
       if (!name) return notify("Tên lớp không được để trống", "error");
-      if (maxStudents < 1 || maxStudents > 200) {
-        return notify("Số lượng tối đa phải từ 1 đến 200", "error");
-      }
-      createClass(name, year, semester, maxStudents);
+      createClass(name, year, semester);
       form.reset();
     });
   }

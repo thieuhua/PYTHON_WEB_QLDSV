@@ -1,10 +1,8 @@
 # backend/routers/teacher.py - FIXED VERSION
-from fastapi import APIRouter, Depends, HTTPException, status, Request, UploadFile, File
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from typing import List
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
-import io
 
 from ..db import teacher_crud, crud, database, schemas, models
 from ..db.database import get_db
@@ -175,100 +173,3 @@ def save_grades(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save grades: {str(e)}")
-
-
-@router.delete("/classes/{class_id}", summary="Delete a class")
-def delete_class(
-        class_id: int,
-        current_user: models.User = Depends(get_current_teacher),
-        db: Session = Depends(get_db)
-):
-    """
-    Xóa lớp học và tất cả dữ liệu liên quan (sinh viên, điểm, join codes).
-    Chỉ giáo viên được gán mới có thể xóa lớp.
-    """
-    success = teacher_crud.delete_class(db, class_id, current_user.user_id)
-    if not success:
-        raise HTTPException(
-            status_code=404,
-            detail="Class not found or you don't have permission to delete it"
-        )
-    return {"ok": True, "message": "Class deleted successfully"}
-
-
-@router.get("/classes/{class_id}/export", summary="Export students to CSV")
-def export_students(
-        class_id: int,
-        current_user: models.User = Depends(get_current_teacher),
-        db: Session = Depends(get_db)
-):
-    """
-    Export danh sách sinh viên và điểm số ra file CSV.
-    """
-    try:
-        # ✅ csv_bytes is already UTF-8 encoded bytes with BOM
-        csv_bytes = teacher_crud.export_students_csv(db, class_id, current_user.user_id)
-
-        # Get class name for filename
-        cls = db.query(models.Class).filter(models.Class.class_id == class_id).first()
-        class_name = cls.class_name if cls else f"class_{class_id}"
-        # Clean filename
-        safe_name = "".join(c if c.isalnum() or c in (' ', '-', '_') else '_' for c in class_name)
-        filename = f"{safe_name}_students.csv"
-
-
-        # Return as downloadable file
-        return StreamingResponse(
-            io.BytesIO(csv_bytes),
-            media_type="text/csv; charset=utf-8",
-            headers={
-                "Content-Disposition": f'attachment; filename="{filename}"'
-            }
-        )
-    except ValueError as e:
-        # Class not found
-        raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
-
-
-@router.post("/classes/{class_id}/import", summary="Import students from CSV")
-async def import_students(
-        class_id: int,
-        file: UploadFile = File(...),
-        current_user: models.User = Depends(get_current_teacher),
-        db: Session = Depends(get_db)
-):
-    """
-    Import danh sách sinh viên và điểm số từ file CSV.
-    Format: Họ tên, Mã SV, Chuyên cần, Giữa kỳ, Cuối kỳ
-    hoặc: STT, Họ tên, Mã SV, Chuyên cần, Giữa kỳ, Cuối kỳ, Trung bình
-    """
-    # Validate file type
-    if not file.filename.endswith('.csv'):
-        raise HTTPException(status_code=400, detail="File must be CSV format")
-
-    try:
-        # Read file content
-        content = await file.read()
-        csv_content = content.decode('utf-8-sig')  # utf-8-sig to handle BOM
-
-        # Import
-        result = teacher_crud.import_students_csv(db, class_id, current_user.user_id, csv_content)
-
-        return {
-            "ok": True,
-            "message": f"Import completed: {result['success_count']} thành công, {result['error_count']} lỗi",
-            "success_count": result['success_count'],
-            "error_count": result['error_count'],
-            "errors": result['errors']
-        }
-    except ValueError as e:
-        # Class not found
-        raise HTTPException(status_code=404, detail=str(e))
-    except UnicodeDecodeError:
-        raise HTTPException(status_code=400, detail="File encoding error. Please use UTF-8 encoding")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Import failed: {str(e)}")
-
-
