@@ -103,12 +103,11 @@ class ClassBase(BaseModel):
 
 
 class ClassCreate(ClassBase):
-    max_students: Optional[int] = 50  # Số lượng sinh viên tối đa, mặc định 50
+    pass
 
 
 class ClassRead(ClassBase):
     class_id: int
-    max_students: Optional[int] = None
 
     class Config:
         orm_mode = True

@@ -57,7 +57,6 @@ class Class(Base):
     class_name = Column(String, nullable=False)
     year = Column(Integer, nullable=False)
     semester = Column(Integer, nullable=False)
-    max_students = Column(Integer, nullable=True, default=50)  # Số lượng sinh viên tối đa
 
     enrollments = relationship("Enrollment", back_populates="class_")
     teaching_assignments = relationship("TeachingAssignment", back_populates="class_")
