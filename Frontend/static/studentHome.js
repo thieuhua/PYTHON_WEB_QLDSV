@@ -1,172 +1,161 @@
-// ===== CẤU HÌNH API =====
-const API_BASE_URL = 'http://127.0.0.1:8000/api';
+// ========================================
+// studentHome.js — Final (UI-upgraded, logic preserved)
+// - Giữ nguyên API endpoints & logic gốc
+// - Removes inline color for progress, adds .progress-text
+// - Injects Dark Mode button into header (no HTML change required)
+// ========================================
 
+const API_BASE_URL = 'http://127.0.0.1:8000/api';
 let scoreChart = null;
 let currentUser = null;
 
-// ===== Lấy headers với token =====
+// ===== Helpers =====
 function getAuthHeaders() {
-    const token = localStorage.getItem('token');
-    return {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-    };
+  const token = localStorage.getItem('token');
+  return {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json'
+  };
 }
 
-// ===== Hiển thị thông báo =====
 function showNotification(message, isError = false) {
-    const notif = document.createElement('div');
-    notif.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: ${isError ? '#f44336' : '#4CAF50'};
-        color: white;
-        padding: 15px 25px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        z-index: 10000;
-        animation: slideInRight 0.3s ease;
-        font-size: 14px;
-        max-width: 300px;
-    `;
-    notif.textContent = message;
-    document.body.appendChild(notif);
+  const notif = document.createElement('div');
+  notif.style.cssText = `
+    position: fixed;
+    top: -60px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: ${isError ? '#f44336' : '#4CAF50'};
+    color: white;
+    padding: 14px 24px;
+    border-radius: 8px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+    font-size: 15px;
+    font-weight: 500;
+    z-index: 9999;
+    opacity: 0;
+    transition: all 0.4s ease;
+  `;
+  notif.textContent = message;
+  document.body.appendChild(notif);
 
-    setTimeout(() => {
-        notif.style.animation = 'slideOutRight 0.3s ease';
-        setTimeout(() => notif.remove(), 300);
-    }, 3500);
+  // Hiện ra (trượt xuống)
+  setTimeout(() => {
+    notif.style.top = '30px';
+    notif.style.opacity = '1';
+  }, 20);
+
+  // Ẩn đi (trượt lên lại)
+  setTimeout(() => {
+    notif.style.top = '-60px';
+    notif.style.opacity = '0';
+    setTimeout(() => notif.remove(), 400);
+  }, 3500);
 }
 
-// ===== 1. LẤY THÔNG TIN SINH VIÊN HIỆN TẠI =====
+// ===== 1. Fetch current user =====
 async function fetchCurrentUser() {
-    try {
-        const response = await fetch(`/api/me`, {
-            headers: getAuthHeaders()
-        });
-
-        if (!response.ok) {
-            throw new Error('Không thể lấy thông tin người dùng');
-        }
-
-        const data = await response.json();
-        console.log('✅ User data:', data);
-        currentUser = data;
-        renderStudentInfo(data);
-        return data;
-    } catch (error) {
-        console.error('❌ Error fetching user:', error);
-        showNotification('Không thể tải thông tin sinh viên', true);
-        return null;
-    }
+  try {
+    const resp = await fetch(`/api/me`, { headers: getAuthHeaders() });
+    if (!resp.ok) throw new Error('Không thể lấy thông tin người dùng');
+    const data = await resp.json();
+    currentUser = data;
+    renderStudentInfo(data);
+    return data;
+  } catch (err) {
+    console.error('fetchCurrentUser error', err);
+    showNotification('Không thể tải thông tin sinh viên', true);
+    return null;
+  }
 }
 
-// ===== 2. HIỂN THỊ THÔNG TIN SINH VIÊN =====
+// ===== 2. Render student info =====
 function renderStudentInfo(userData) {
-    document.getElementById('student-name').textContent = userData.full_name || 'N/A';
+  if (!userData) return;
+  const nameEl = document.getElementById('student-name');
+  if (nameEl) nameEl.textContent = userData.full_name || 'N/A';
 
-    if (userData.role === 'student' && userData.student_profile) {
-        const profile = userData.student_profile;
-
-        document.getElementById('student-id').textContent = profile.student_code || 'N/A';
-
-        if (profile.birthdate) {
-            const date = new Date(profile.birthdate);
-            const formatted = `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear()}`;
-            document.getElementById('birth-date').textContent = formatted;
-        } else {
-            document.getElementById('birth-date').textContent = 'N/A';
-        }
-
-        document.getElementById('student-class').textContent = 'Sinh viên';
+  if (userData.role === 'student' && userData.student_profile) {
+    const profile = userData.student_profile;
+    const idEl = document.getElementById('student-id');
+    const classEl = document.getElementById('student-class');
+    const birthEl = document.getElementById('birth-date');
+    if (idEl) idEl.textContent = profile.student_code || 'N/A';
+    if (classEl) classEl.textContent = 'Sinh viên';
+    if (birthEl) {
+      if (profile.birthdate) {
+        const d = new Date(profile.birthdate);
+        birthEl.textContent = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+      } else birthEl.textContent = 'N/A';
     }
+  }
 }
 
-// ===== 3. LẤY DANH SÁCH LỚP HỌC =====
+// ===== 3. Fetch enrollments & class details =====
 async function fetchStudentClasses(studentId) {
-    try {
-        console.log(`📡 Fetching enrollments for student ${studentId}...`);
+  try {
+    const enrollRes = await fetch(`${API_BASE_URL}/students/${studentId}/enrollments`, { headers: getAuthHeaders() });
+    if (!enrollRes.ok) throw new Error('Không thể lấy danh sách lớp học');
+    const enrollments = await enrollRes.json();
+    if (!Array.isArray(enrollments) || enrollments.length === 0) return [];
 
-        const enrollResponse = await fetch(`${API_BASE_URL}/students/${studentId}/enrollments`, {
-            headers: getAuthHeaders()
-        });
+    // load class details in parallel
+    const promises = enrollments.map(async (enroll) => {
+      try {
+        const clsRes = await fetch(`${API_BASE_URL}/classes/${enroll.class_id}`, { headers: getAuthHeaders() });
+        if (!clsRes.ok) return null;
+        return await clsRes.json();
+      } catch (e) {
+        console.error('fetch class error', enroll.class_id, e);
+        return null;
+      }
+    });
 
-        if (!enrollResponse.ok) {
-            throw new Error('Không thể lấy danh sách lớp học');
-        }
-
-        const enrollments = await enrollResponse.json();
-        console.log('📚 Enrollments:', enrollments);
-
-        if (enrollments.length === 0) {
-            return [];
-        }
-
-        const classesPromises = enrollments.map(async (enrollment) => {
-            try {
-                const classResponse = await fetch(`${API_BASE_URL}/classes/${enrollment.class_id}`, {
-                    headers: getAuthHeaders()
-                });
-
-                if (classResponse.ok) {
-                    return await classResponse.json();
-                }
-                return null;
-            } catch (error) {
-                console.error(`Error fetching class ${enrollment.class_id}:`, error);
-                return null;
-            }
-        });
-
-        const classes = await Promise.all(classesPromises);
-        const validClasses = classes.filter(cls => cls !== null);
-
-        console.log('✅ Classes loaded:', validClasses);
-        return validClasses;
-
-    } catch (error) {
-        console.error('❌ Error fetching classes:', error);
-        showNotification('Không thể tải danh sách lớp học', true);
-        return [];
-    }
+    const classes = await Promise.all(promises);
+    return classes.filter(c => c !== null);
+  } catch (err) {
+    console.error('fetchStudentClasses error', err);
+    showNotification('Không thể tải danh sách lớp học', true);
+    return [];
+  }
 }
 
-// ===== 4. HIỂN THỊ DANH SÁCH LỚP HỌC =====
+// ===== 4. Generate class cards (uses .progress-text class, no inline color) =====
 async function generateClassCards() {
-    const grid = document.getElementById('classes-grid');
-    grid.innerHTML = '<div style="text-align:center;padding:40px;color:#666;">⏳ Đang tải danh sách lớp học...</div>';
+  const grid = document.getElementById('classes-grid');
+  if (!grid) return;
 
-    try {
-        if (!currentUser) {
-            const user = await fetchCurrentUser();
-            if (!user) {
-                grid.innerHTML = '<div style="text-align:center;padding:40px;color:#f44336;">❌ Không thể tải thông tin người dùng</div>';
-                return;
-            }
-        }
+  grid.innerHTML = `<div style="text-align:center;padding:40px;color:#666;">⏳ Đang tải danh sách lớp học...</div>`;
 
-        if (!currentUser.student_profile) {
-            grid.innerHTML = '<div style="text-align:center;padding:40px;color:#ff9800;">⚠️ Không tìm thấy thông tin sinh viên. Vui lòng liên hệ admin.</div>';
-            return;
-        }
+  if (!currentUser) {
+    const u = await fetchCurrentUser();
+    if (!u) {
+      grid.innerHTML = `<div style="text-align:center;padding:40px;color:#f44336;">❌ Không thể tải thông tin người dùng</div>`;
+      return;
+    }
+  }
 
-        const classes = await fetchStudentClasses(currentUser.student_profile.student_id);
+  if (!currentUser.student_profile) {
+    grid.innerHTML = `<div style="text-align:center;padding:40px;color:#ff9800;">⚠️ Không tìm thấy thông tin sinh viên. Vui lòng liên hệ admin.</div>`;
+    return;
+  }
 
-        if (classes.length === 0) {
-            grid.innerHTML = '<div style="text-align:center;padding:40px;color:#666;">📚 Chưa đăng ký lớp học nào</div>';
-            return;
-        }
+  const studentId = currentUser.student_profile.student_id;
+  const classes = await fetchStudentClasses(studentId);
 
-        grid.innerHTML = '';
+  if (!classes || classes.length === 0) {
+    grid.innerHTML = `<div style="text-align:center;padding:40px;color:#666;">📚 Chưa đăng ký lớp học nào</div>`;
+    return;
+  }
 
-        classes.forEach(cls => {
-            const card = document.createElement('div');
-            card.className = 'class-card';
+  grid.innerHTML = '';
+  classes.forEach(cls => {
+    const card = document.createElement('div');
+    card.className = 'class-card';
 
-            const progress = calculateProgress(cls.year, cls.semester);
+    const progress = calculateProgress(cls.year, cls.semester);
 
-            card.innerHTML = `
+    card.innerHTML = `
                 <div class="class-name tooltip" data-tooltip="Năm: ${cls.year}, Học kỳ: ${cls.semester}">
                     ${cls.class_name}
                 </div>
@@ -174,398 +163,289 @@ async function generateClassCards() {
                 <div class="progress-bar">
                     <div class="progress-fill" style="width:${progress}%"></div>
                 </div>
-                <div style="margin-top:0.5rem;font-size:0.8rem;color:#666;">
+                <div class="progress-text">
                     Tiến độ: ${progress}%
                 </div>
             `;
 
-            card.addEventListener('click', () => {
-                showSubjectScore(cls.class_id, cls.class_name);
-            });
+    card.addEventListener('click', () => showSubjectScore(cls.class_id, cls.class_name));
+    grid.appendChild(card);
+  });
 
-            grid.appendChild(card);
-        });
-
-        showNotification('✅ Đã tải danh sách lớp học');
-
-    } catch (error) {
-        console.error('❌ Error:', error);
-        grid.innerHTML = '<div style="text-align:center;padding:40px;color:#f44336;">❌ Đã xảy ra lỗi khi tải dữ liệu</div>';
-    }
+  showNotification('✅ Đã tải danh sách lớp học');
 }
 
-// ===== 5. TÍNH TIẾN ĐỘ HỌC TẬP =====
+// ===== 5. Progress calculation (keep same logic semantics) =====
 function calculateProgress(year, semester) {
-    const currentDate = new Date();
-    const currentYear = currentDate.getFullYear();
-    const currentMonth = currentDate.getMonth() + 1;
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
 
-    if (year < currentYear) return 100;
-    if (year > currentYear) return 0;
+  if (year < currentYear) return 100;
+  if (year > currentYear) return 0;
 
-    if (semester === 1) {
-        if (currentMonth >= 9) {
-            return Math.min(Math.round(((currentMonth - 9 + 1) / 5) * 100), 100);
-        } else if (currentMonth === 1) {
-            return 100;
-        } else {
-            return 0;
-        }
-    } else if (semester === 2) {
-        if (currentMonth >= 2 && currentMonth <= 6) {
-            return Math.min(Math.round(((currentMonth - 2 + 1) / 5) * 100), 100);
-        } else if (currentMonth > 6) {
-            return 100;
-        } else {
-            return 0;
-        }
+  if (semester === 1) {
+    if (currentMonth >= 9) {
+      return Math.min(Math.round(((currentMonth - 9 + 1) / 5) * 100), 100);
+    } else if (currentMonth === 1) {
+      return 100;
+    } else {
+      return 0;
     }
-
-    return 50;
+  } else if (semester === 2) {
+    if (currentMonth >= 2 && currentMonth <= 6) {
+      return Math.min(Math.round(((currentMonth - 2 + 1) / 5) * 100), 100);
+    } else if (currentMonth > 6) {
+      return 100;
+    } else {
+      return 0;
+    }
+  }
+  return 50;
 }
 
-// ✅ HÀM GỘP ĐIỂM THEO LỚP HỌC
+// ===== 6. Group grades + calculate average (preserve original mapping) =====
 function groupGradesByClass(grades) {
-    // Group grades by class_id
-    const grouped = {};
+  const grouped = {};
+  grades.forEach(grade => {
+    const classId = grade.class_id;
+    if (!grouped[classId]) grouped[classId] = { class_id: classId, attendance: null, mid: null, final: null };
 
-    grades.forEach(grade => {
-        const classId = grade.class_id;
-
-        if (!grouped[classId]) {
-            grouped[classId] = {
-                class_id: classId,
-                attendance: null,
-                mid: null,
-                final: null
-            };
-        }
-
-        // Map subject name to field
-        const subject = grade.subject.toLowerCase();
-        if (subject === 'attendance') {
-            grouped[classId].attendance = grade.score;
-        } else if (subject === 'mid') {
-            grouped[classId].mid = grade.score;
-        } else if (subject === 'final') {
-            grouped[classId].final = grade.score;
-        }
-    });
-
-    return Object.values(grouped);
+    const subject = (grade.subject || '').toLowerCase();
+    if (subject === 'attendance') grouped[classId].attendance = grade.score;
+    else if (subject === 'mid') grouped[classId].mid = grade.score;
+    else if (subject === 'final') grouped[classId].final = grade.score;
+  });
+  return Object.values(grouped);
 }
 
-// ✅ HÀM TÍNH ĐIỂM TRUNG BÌNH
-function calculateAverage(attendance, mid, final) {
-    // Chỉ tính trung bình nếu có ít nhất 1 điểm
-    const scores = [];
-    const weights = [];
-
-    if (attendance !== null && attendance !== undefined) {
-        scores.push(parseFloat(attendance));
-        weights.push(0.2);
-    }
-    if (mid !== null && mid !== undefined) {
-        scores.push(parseFloat(mid));
-        weights.push(0.3);
-    }
-    if (final !== null && final !== undefined) {
-        scores.push(parseFloat(final));
-        weights.push(0.5);
-    }
-
-    if (scores.length === 0) return null;
-
-    // Tính trọng số tương đối
-    const totalWeight = weights.reduce((sum, w) => sum + w, 0);
-    const weightedSum = scores.reduce((sum, score, i) => sum + (score * weights[i]), 0);
-
-    return (weightedSum / totalWeight).toFixed(2);
+function calculateAverage(attendance, mid, finalScore) {
+  const scores = [];
+  const weights = [];
+  if (attendance !== null && attendance !== undefined) { scores.push(parseFloat(attendance)); weights.push(0.2); }
+  if (mid !== null && mid !== undefined) { scores.push(parseFloat(mid)); weights.push(0.3); }
+  if (finalScore !== null && finalScore !== undefined) { scores.push(parseFloat(finalScore)); weights.push(0.5); }
+  if (scores.length === 0) return null;
+  const totalWeight = weights.reduce((s, w) => s + w, 0);
+  const weightedSum = scores.reduce((s, v, i) => s + v * weights[i], 0);
+  return (weightedSum / totalWeight).toFixed(2);
 }
 
-// ===== 6. HIỂN THỊ ĐIỂM CỦA MỘT LỚP =====
+// ===== 7. Show scores for a class and render chart =====
 async function showSubjectScore(classId, className) {
-    const tbody = document.getElementById('score-table-body');
-    const section = document.getElementById('score-section');
-    const chartSection = document.getElementById('chart-section');
-    const title = document.getElementById('score-title');
+  const tbody = document.getElementById('score-table-body');
+  const section = document.getElementById('score-section');
+  const chartSection = document.getElementById('chart-section');
+  const title = document.getElementById('score-title');
 
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;">⏳ Đang tải điểm...</td></tr>';
-    section.style.display = 'block';
-    chartSection.style.display = 'none';
-    title.textContent = `📊 Điểm môn học: ${className}`;
+  if (!tbody || !section || !chartSection || !title) return;
 
-    try {
-        if (!currentUser || !currentUser.student_profile) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#f44336;">Không tìm thấy thông tin sinh viên</td></tr>';
-            return;
-        }
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;">⏳ Đang tải điểm...</td></tr>';
+  section.style.display = 'block';
+  chartSection.style.display = 'none';
+  title.textContent = `📊 Điểm môn học: ${className}`;
 
-        const studentId = currentUser.student_profile.student_id;
-
-        console.log(`📡 Fetching grades for student ${studentId}, class ${classId}...`);
-
-        const response = await fetch(`${API_BASE_URL}/students/${studentId}/grades?class_id=${classId}`, {
-            headers: getAuthHeaders()
-        });
-
-        if (!response.ok) {
-            throw new Error('Không thể lấy điểm');
-        }
-
-        const grades = await response.json();
-        console.log('📝 Raw grades:', grades);
-
-        if (grades.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:#666;">📝 Chưa có điểm</td></tr>';
-            return;
-        }
-
-        // ✅ GỘP ĐIỂM THEO LỚP
-        const groupedGrades = groupGradesByClass(grades);
-        console.log('📊 Grouped grades:', groupedGrades);
-
-        tbody.innerHTML = '';
-
-        groupedGrades.forEach(gradeGroup => {
-            const att = gradeGroup.attendance !== null ? gradeGroup.attendance : '-';
-            const mid = gradeGroup.mid !== null ? gradeGroup.mid : '-';
-            const fin = gradeGroup.final !== null ? gradeGroup.final : '-';
-            const avg = calculateAverage(gradeGroup.attendance, gradeGroup.mid, gradeGroup.final);
-
-            const row = `
-                <tr>
-                    <td>${className}</td>
-                    <td>${att !== '-' ? parseFloat(att).toFixed(2) : '-'}</td>
-                    <td>${mid !== '-' ? parseFloat(mid).toFixed(2) : '-'}</td>
-                    <td>${fin !== '-' ? parseFloat(fin).toFixed(2) : '-'}</td>
-                    <td><b style="color:#4CAF50;font-size:1.1rem;">${avg !== null ? avg : '-'}</b></td>
-                </tr>
-            `;
-            tbody.innerHTML += row;
-        });
-
-        // ✅ VẼ BIỂU ĐỒ
-        if (groupedGrades.length > 0) {
-            chartSection.style.display = 'block';
-            renderScoreChart(groupedGrades, className);
-        }
-
-        showNotification('✅ Đã tải điểm thành công');
-
-    } catch (error) {
-        console.error('❌ Error fetching grades:', error);
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:#f44336;">❌ Không thể tải điểm</td></tr>';
-        showNotification('Không thể tải điểm số', true);
+  try {
+    if (!currentUser || !currentUser.student_profile) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#f44336;">Không tìm thấy thông tin sinh viên</td></tr>';
+      return;
     }
+    const studentId = currentUser.student_profile.student_id;
+    const res = await fetch(`${API_BASE_URL}/students/${studentId}/grades?class_id=${classId}`, { headers: getAuthHeaders() });
+    if (!res.ok) throw new Error('Không thể lấy điểm');
+    const grades = await res.json();
+
+    if (!grades || grades.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:#666;">📝 Chưa có điểm</td></tr>';
+      return;
+    }
+
+    const grouped = groupGradesByClass(grades);
+    tbody.innerHTML = '';
+
+    grouped.forEach(gradeGroup => {
+      const att = gradeGroup.attendance !== null ? parseFloat(gradeGroup.attendance).toFixed(2) : '-';
+      const mid = gradeGroup.mid !== null ? parseFloat(gradeGroup.mid).toFixed(2) : '-';
+      const fin = gradeGroup.final !== null ? parseFloat(gradeGroup.final).toFixed(2) : '-';
+      const avg = calculateAverage(gradeGroup.attendance, gradeGroup.mid, gradeGroup.final);
+      const avgDisplay = avg !== null ? avg : '-';
+      tbody.innerHTML += `
+        <tr>
+          <td>${className}</td>
+          <td>${att}</td>
+          <td>${mid}</td>
+          <td>${fin}</td>
+          <td><b style="color:#4CAF50">${avgDisplay}</b></td>
+        </tr>
+      `;
+    });
+
+    // render chart if at least one group
+    if (grouped.length > 0) {
+      chartSection.style.display = 'block';
+      renderScoreChart(grouped, className);
+    } else {
+      chartSection.style.display = 'none';
+    }
+
+    showNotification('✅ Đã tải điểm thành công');
+  } catch (err) {
+    console.error('showSubjectScore error', err);
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:#f44336;">❌ Không thể tải điểm</td></tr>';
+    showNotification('Không thể tải điểm', true);
+  }
 }
 
-// ===== 7. VẼ BIỂU ĐỒ ĐIỂM =====
+// ===== 8. Render chart (uses Chart.js already included in HTML) =====
 function renderScoreChart(groupedGrades, className) {
-    const ctx = document.getElementById('scoreChart').getContext('2d');
+  const ctxEl = document.getElementById('scoreChart');
+  if (!ctxEl) return;
+  const ctx = ctxEl.getContext('2d');
 
-    if (scoreChart) {
-        scoreChart.destroy();
-    }
+  if (scoreChart) try { scoreChart.destroy(); } catch(e){}
 
-    // ✅ Dữ liệu cho biểu đồ
-    const labels = ['Chuyên cần', 'Giữa kỳ', 'Cuối kỳ'];
-    const gradeGroup = groupedGrades[0]; // Lấy nhóm điểm đầu tiên
+  const g = groupedGrades[0] || { attendance: 0, mid: 0, final: 0 };
+  const data = [
+    g.attendance !== null ? parseFloat(g.attendance) : 0,
+    g.mid !== null ? parseFloat(g.mid) : 0,
+    g.final !== null ? parseFloat(g.final) : 0
+  ];
 
-    const scores = [
-        gradeGroup.attendance || 0,
-        gradeGroup.mid || 0,
-        gradeGroup.final || 0
-    ];
-
-    const colors = ['#DC143C', '#F75270', '#4CAF50'];
-
-    scoreChart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Điểm',
-                data: scores,
-                backgroundColor: colors,
-                borderWidth: 2,
-                borderColor: '#fff',
-                borderRadius: 5
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 10,
-                    ticks: {
-                        stepSize: 1,
-                        font: {
-                            size: 12
-                        }
-                    },
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
-                    }
-                },
-                x: {
-                    ticks: {
-                        font: {
-                            size: 11
-                        }
-                    },
-                    grid: {
-                        display: false
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    display: false
-                },
-                title: {
-                    display: true,
-                    text: `Biểu đồ điểm: ${className}`,
-                    font: {
-                        size: 16,
-                        weight: 'bold'
-                    },
-                    color: '#DC143C'
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleFont: {
-                        size: 14
-                    },
-                    bodyFont: {
-                        size: 13
-                    },
-                    padding: 10,
-                    cornerRadius: 5
-                }
-            }
+  scoreChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Chuyên cần', 'Giữa kỳ', 'Cuối kỳ'],
+      datasets: [{
+        label: 'Điểm',
+        data,
+        backgroundColor: ['#DC143C', '#F75270', '#4CAF50'],
+        borderWidth: 0,
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      scales: {
+        y: { beginAtZero: true, max: 10, ticks: { stepSize: 1 } }
+      },
+      plugins: {
+        legend: { display: false },
+        title: {
+          display: true,
+          text: `Biểu đồ điểm: ${className}`,
+          color: '#DC143C',
+          font: { size: 14, weight: '600' }
         }
-    });
+      }
+    }
+  });
 }
 
-// ===== 8. DARK MODE =====
+// ===== 9. Dark mode toggle logic (keeps state in localStorage) =====
 function toggleDarkMode() {
-    document.body.classList.toggle('dark-mode');
-    const isDark = document.body.classList.contains('dark-mode');
-    localStorage.setItem('darkMode', isDark);
+  document.body.classList.toggle('dark-mode');
+  const isDark = document.body.classList.contains('dark-mode');
+  localStorage.setItem('darkMode', isDark ? 'true' : 'false');
+}
+function initDarkModeFromStorage() {
+  if (localStorage.getItem('darkMode') === 'true') document.body.classList.add('dark-mode');
 }
 
-if (localStorage.getItem('darkMode') === 'true') {
-    document.body.classList.add('dark-mode');
-}
-
-// ===== 9. KHỞI TẠO TRANG =====
-document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 studentHome.js loaded');
-
-    const token = localStorage.getItem('token');
-    if (!token) {
-        console.error('❌ No token found');
-        window.location.href = '/login';
-        return;
-    }
-
-    console.log('✅ Token found, loading data...');
-
-    await generateClassCards();
-});
-
-// CSS Animation
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideInRight {
-        from {
-            transform: translateX(400px);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
-    }
-    @keyframes slideOutRight {
-        from {
-            transform: translateX(0);
-            opacity: 1;
-        }
-        to {
-            transform: translateX(400px);
-            opacity: 0;
-        }
-    }
-`;
-document.head.appendChild(style);
-
-console.log('✅ studentHome.js initialized');
-
-
-//Tham gia lop
+// ===== 10. Join class =====
 async function JoinClass() {
-
-    const response = await fetch(`/api/me`, {
-            headers: getAuthHeaders()
-        });
-
-        if (!response.ok) {
-            throw new Error('Không thể lấy thông tin người dùng');
-        }
-    const userData = await response.json();
-
+  try {
+    const resp = await fetch(`/api/me`, { headers: getAuthHeaders() });
+    if (!resp.ok) throw new Error('Không thể lấy thông tin người dùng');
+    const userData = await resp.json();
     const studentId = parseInt(userData.student_profile.student_id);
-    const joinCode = document.querySelector('.code-input').value.trim();
+    const joinCode = (document.querySelector('.code-input')?.value || '').trim();
 
-    console.log("joinCode:", joinCode, "studentId:", studentId);
-    fetch(`http://127.0.0.1:8000/api/student/${studentId}/join`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            code: joinCode
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        alert(data.message);
-        console.log("Server response:", data);
-    })
-    .catch(error => {
-        console.error("Error occurred:", error);
-        alert("Error occured, please try again.");
+    const res = await fetch(`${API_BASE_URL}/student/${studentId}/join`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: joinCode })
     });
 
-}
-
-// ===== CHỈNH SỬA THÔNG TIN =====
-function editProfile() {
-    console.log("✏️ Chuyển hướng tới trang chỉnh sửa thông tin...");
-    window.location.href = "/editProfile";
-}
-
-// ===== CẬP NHẬT REAL-TIME KHI QUAY LẠI =====
-window.addEventListener('focus', async () => {
-    console.log("🔄 Trang được focus, cập nhật thông tin...");
-    await fetchCurrentUser();
-    await generateClassCards();
-});
-
-// ===== CẬP NHẬT REAL-TIME KHI localStorage THAY ĐỔI =====
-window.addEventListener('storage', async (e) => {
-    if (e.key === 'userInfo') {
-        console.log("📝 localStorage userInfo thay đổi, cập nhật giao diện...");
-        try {
-            const updatedUser = JSON.parse(e.newValue);
-            renderStudentInfo(updatedUser);
-        } catch (err) {
-            console.error("❌ Lỗi parse userInfo:", err);
-        }
+    const data = await res.json();
+    showNotification(data.message, !res.ok);
+    if (res.ok) {
+      // refresh class list shortly to show new class
+      setTimeout(() => generateClassCards(), 900);
     }
+  } catch (err) {
+    console.error('JoinClass error', err);
+    showNotification('❌ Không thể tham gia lớp', true);
+  }
+}
+
+// ===== 11. Edit profile redirect (kept original behavior) =====
+function editProfile() {
+  window.location.href = '/editProfile';
+}
+
+// ===== 12. Auto update on focus & storage changes =====
+window.addEventListener('focus', async () => {
+  try { await fetchCurrentUser(); await generateClassCards(); } catch(e){}
+});
+window.addEventListener('storage', async (e) => {
+  if (e.key === 'userInfo') {
+    try {
+      const updated = JSON.parse(e.newValue);
+      renderStudentInfo(updated);
+    } catch (err) { console.error('storage parse error', err); }
+  }
 });
 
+// ===== 13. Inject header dark mode button (so no HTML changes needed) =====
+function ensureHeaderDarkToggle() {
+  try {
+    const headerButtons = document.querySelector('.header-buttons');
+    if (!headerButtons) return;
+
+    // If button already exists, attach listener and return
+    if (document.getElementById('injected-dark-toggle')) {
+      const btn = document.getElementById('injected-dark-toggle');
+      btn.onclick = toggleDarkMode;
+      return;
+    }
+
+    const btn = document.createElement('button');
+    btn.id = 'injected-dark-toggle';
+    btn.className = 'dark-mode-toggle';
+    btn.title = 'Chuyển chế độ tối/sáng';
+    btn.innerText = '🌙';
+    btn.onclick = toggleDarkMode;
+
+    // insert before the last header button (so sits near logout/edit)
+    headerButtons.insertBefore(btn, headerButtons.lastElementChild?.nextSibling);
+  } catch (err) {
+    console.error('ensureHeaderDarkToggle error', err);
+  }
+}
+
+// ===== 14. Init on DOMContentLoaded =====
+document.addEventListener('DOMContentLoaded', async () => {
+  // ensure token exists (original behavior)
+  const token = localStorage.getItem('token');
+  if (!token) {
+    console.error('No token found, redirect to /login');
+    window.location.href = '/login';
+    return;
+  }
+
+  // init dark mode state & inject button
+  initDarkModeFromStorage();
+  ensureHeaderDarkToggle();
+
+  // load user and classes
+  await fetchCurrentUser();
+  await generateClassCards();
+
+  console.log('✅ studentHome.js initialized');
+});
+
+// expose some functions for inline HTML buttons (if used)
+window.JoinClass = JoinClass;
+window.editProfile = editProfile;
+window.toggleDarkMode = toggleDarkMode;
