@@ -154,7 +154,10 @@ async function createClass(name, code) {
 // ---------- Open class modal & fetch students ----------
 async function fetchClassDetail(id) {
   try {
-    const res = await fetch(`${API_BASE_URL}/teacher/classes/${id}`, { headers: getAuthHeaders() });
+    const res = await fetch(`${API_BASE_URL}/teacher/classes/${id}`, {
+      headers: getAuthHeaders(),
+      cache: 'no-cache' // Đảm bảo lấy dữ liệu mới nhất
+    });
     if (!res.ok) throw new Error('Không tải được dữ liệu lớp');
     return await res.json();
   } catch (err) {
@@ -202,7 +205,7 @@ function renderStudentTable() {
   tbody.innerHTML = currentClass.students.map((s, i) => {
     const g = s.grades || {};
     const att = g.attendance !== undefined && g.attendance !== null ? g.attendance : '';
-    const mid = g.midterm !== undefined && g.midterm !== null ? g.midterm : '';
+    const mid = g.mid !== undefined && g.mid !== null ? g.mid : '';
     const fin = g.final !== undefined && g.final !== null ? g.final : '';
     const avg = (att !== '' && mid !== '' && fin !== '') ? ((parseFloat(att)*0.2 + parseFloat(mid)*0.3 + parseFloat(fin)*0.5).toFixed(1)) : '-';
     return `
@@ -212,7 +215,7 @@ function renderStudentTable() {
         <td style="text-align:left;padding-left:12px;">${escapeHtml(s.full_name)}</td>
         <td>${escapeHtml(s.student_code)}</td>
         <td><input class="input-grade" data-field="attendance" value="${att}" onchange="onGradeEdit('${s.student_id}', this)"></td>
-        <td><input class="input-grade" data-field="midterm" value="${mid}" onchange="onGradeEdit('${s.student_id}', this)"></td>
+        <td><input class="input-grade" data-field="mid" value="${mid}" onchange="onGradeEdit('${s.student_id}', this)"></td>
         <td><input class="input-grade" data-field="final" value="${fin}" onchange="onGradeEdit('${s.student_id}', this)"></td>
         <td><strong>${avg}</strong></td>
         <td><button class="create-btn small danger" onclick="deleteStudentFromClass('${s.student_id}')">Xóa</button></td>
@@ -240,7 +243,7 @@ async function updateStudentGrade(studentId, field, val) {
     const payload = [{
       student_id: parseInt(studentId),
       class_id: parseInt(currentClass.class_id),
-      subject: field === 'midterm' ? 'mid' : (field === 'final' ? 'final' : 'attendance'),
+      subject: field, // Giữ nguyên field name: 'attendance', 'mid', 'final'
       score: Number(val)
     }];
     const res = await fetch(`${API_BASE_URL}/teacher/classes/${currentClass.class_id}/grades`, {
@@ -373,43 +376,101 @@ async function confirmDeleteClass() {
 function triggerImport() {
   document.getElementById('import-file').click();
 }
-function importCSV(e) {
+
+async function importCSV(e) {
+  if (!currentClass) return notify('Mở chi tiết lớp trước khi import', true);
+
   const f = e.target.files[0];
   if (!f) return;
-  const reader = new FileReader();
-  reader.onload = async ev => {
-    const lines = ev.target.result.split(/\r?\n/).slice(1).filter(x => x.trim());
-    if (!lines.length) return notify('CSV trống', true);
-    let added = 0;
-    for (const l of lines) {
-      const cols = l.split(',');
-      const name = (cols[0] || '').trim();
-      const code = (cols[1] || '').trim();
-      if (!name || !code) continue;
-      try {
-        const res = await fetch(`${API_BASE_URL}/teacher/classes/${currentClass.class_id}/students`, {
-          method: 'POST',
-          headers: getAuthHeaders(),
-          body: JSON.stringify({ full_name: name, student_code: code })
-        });
-        if (res.ok) added++;
-      } catch (err) { console.error('importCSV add error', err); }
+
+  const formData = new FormData();
+  formData.append('file', f);
+
+  try {
+    const token = localStorage.getItem('token') || getCookie('token');
+    const res = await fetch(`${API_BASE_URL}/teacher/classes/${currentClass.class_id}/import`, {
+      method: 'POST',
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : ''
+      },
+      body: formData
+    });
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.detail || 'Import thất bại');
     }
-    notify(`Đã import ${added}/${lines.length} SV (frontend only)`);
+
+    const result = await res.json();
+    notify(`✅ Import thành công ${result.added_count}/${result.total_rows} sinh viên`);
+
+    if (result.errors && result.errors.length > 0) {
+      console.warn('Import errors:', result.errors);
+    }
+
+    // Refresh danh sách
     const updated = await fetchClassDetail(currentClass.class_id);
-    if (updated) { currentClass = updated; renderStudentTable(); document.getElementById('modal-count').textContent = currentClass.students?.length ?? 0; }
-  };
-  reader.readAsText(f);
+    if (updated) {
+      currentClass = updated;
+      renderStudentTable();
+      document.getElementById('modal-count').textContent = currentClass.students?.length ?? 0;
+    }
+  } catch (err) {
+    console.error('importCSV error', err);
+    notify(err.message || 'Import thất bại', true);
+  } finally {
+    // Reset input để có thể import lại cùng file
+    e.target.value = '';
+  }
 }
-function exportCSV() {
-  if (!currentClass || !currentClass.students?.length) return notify('Không có SV để export', true);
-  const lines = ['full_name,student_code', ...currentClass.students.map(s => `${s.full_name},${s.student_code}`)];
-  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `${currentClass.class_name || 'class'}.csv`;
-  a.click();
-  notify('Đã xuất CSV');
+
+async function exportCSV() {
+  if (!currentClass) return notify('Mở chi tiết lớp trước khi export', true);
+
+  console.log('🔍 Export CSV clicked');
+  console.log('📊 Current class:', currentClass);
+
+  try {
+    const token = localStorage.getItem('token') || getCookie('token');
+    console.log('🔑 Token:', token ? 'Present' : 'Missing');
+
+    const url = `${API_BASE_URL}/teacher/classes/${currentClass.class_id}/export`;
+    console.log('📤 Fetching:', url);
+
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : ''
+      }
+    });
+
+    console.log('📊 Response status:', res.status);
+    console.log('📊 Response headers:', Object.fromEntries(res.headers.entries()));
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      console.log('❌ Export failed:', error);
+      throw new Error(error.detail || 'Export thất bại');
+    }
+
+    // Lấy blob từ response
+    const blob = await res.blob();
+
+    // Tạo link download
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = `${currentClass.class_name || 'class'}_students.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(downloadUrl);
+
+    notify('✅ Đã xuất danh sách sinh viên');
+  } catch (err) {
+    console.error('❌ Export error:', err);
+    notify(err.message || 'Export thất bại', true);
+  }
 }
 
 // ---------- Select all ----------

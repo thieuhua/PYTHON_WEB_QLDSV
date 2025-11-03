@@ -5,13 +5,25 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="51292d78-f5a8-4909-afd8-e04dc72a6d2c" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/copilotDiffState.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/FIX_REGISTER.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_update_student.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/CHANGELOG.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/FIXED_500_SUMMARY.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/FIXED_LATIN1_ERROR.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/FIX_500_ERROR.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/FIX_COMPLETE.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/FIX_EXPORT_GUIDE.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/FIX_SERVER_RESTART.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/IMPORT_EXPORT_GUIDE.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/TEST_EXPORT_INSTRUCTIONS.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/quick_test.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sample_students_import.csv" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/start_server.bat" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_encoding_fix.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_export.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/test_import.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/verify_fix.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Frontend/static/login.js" beforeDir="false" afterPath="$PROJECT_DIR$/Frontend/static/login.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Frontend/static/profile.js" beforeDir="false" afterPath="$PROJECT_DIR$/Frontend/static/profile.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/routers/api.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/routers/api.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Frontend/static/teacherHome.js" beforeDir="false" afterPath="$PROJECT_DIR$/Frontend/static/teacherHome.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/routers/teacher.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/routers/teacher.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -138,6 +150,7 @@
       <workItem from="1761933099342" duration="1711000" />
       <workItem from="1761985818334" duration="4258000" />
       <workItem from="1762082785249" duration="771000" />
+      <workItem from="1762153060391" duration="2746000" />
     </task>
     <servers />
   </component>
