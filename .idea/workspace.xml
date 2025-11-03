@@ -5,13 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="51292d78-f5a8-4909-afd8-e04dc72a6d2c" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/copilotDiffState.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/FIX_REGISTER.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/test_update_student.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Frontend/static/login.js" beforeDir="false" afterPath="$PROJECT_DIR$/Frontend/static/login.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Frontend/static/profile.js" beforeDir="false" afterPath="$PROJECT_DIR$/Frontend/static/profile.js" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backend/routers/api.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/routers/api.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/db/teacher_crud.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/db/teacher_crud.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/routers/teacher.py" beforeDir="false" afterPath="$PROJECT_DIR$/backend/routers/teacher.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -138,6 +134,8 @@
       <workItem from="1761933099342" duration="1711000" />
       <workItem from="1761985818334" duration="4258000" />
       <workItem from="1762082785249" duration="771000" />
+      <workItem from="1762153060391" duration="2746000" />
+      <workItem from="1762155979860" duration="533000" />
     </task>
     <servers />
   </component>

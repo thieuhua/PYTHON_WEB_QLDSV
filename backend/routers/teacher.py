@@ -1,8 +1,13 @@
 # backend/routers/teacher.py - FIXED FULL VERSION
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, UploadFile, File
+from fastapi.responses import StreamingResponse, Response
 from typing import List
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
+import csv
+import io
+import re
+from urllib.parse import quote
 
 from ..db import teacher_crud, crud, database, schemas, models
 from ..db.database import get_db
@@ -235,3 +240,219 @@ def delete_class(class_id: int,
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to delete class: {str(e)}")
 
+
+@router.get("/classes/{class_id}/export", summary="Export student list to CSV")
+def export_class_students(
+    class_id: int,
+    current_user: models.User = Depends(get_current_teacher),
+    db: Session = Depends(get_db)
+):
+    """
+    Export danh sách sinh viên của lớp ra file CSV với encoding UTF-8 BOM để hỗ trợ tiếng Việt
+    """
+    try:
+        # Kiểm tra quyền truy cập
+        ta = db.query(models.TeachingAssignment).filter(
+            models.TeachingAssignment.class_id == class_id,
+            models.TeachingAssignment.teacher_id == current_user.user_id
+        ).first()
+        if not ta:
+            raise HTTPException(status_code=403, detail="You are not assigned to this class")
+
+        # Lấy thông tin lớp và sinh viên
+        class_detail = teacher_crud.get_class_detail(db, class_id)
+        if not class_detail:
+            raise HTTPException(status_code=404, detail="Class not found")
+
+        # Tạo CSV với UTF-8 BOM
+        output = io.StringIO()
+        # Thêm BOM để Excel nhận diện UTF-8
+        output.write('\ufeff')
+
+        writer = csv.writer(output, quoting=csv.QUOTE_ALL)
+        # Header
+        writer.writerow(['STT', 'Họ và tên', 'Mã sinh viên', 'Chuyên cần', 'Giữa kỳ', 'Cuối kỳ', 'Trung bình'])
+
+        # Data
+        for idx, student in enumerate(class_detail.get('students', []), start=1):
+            grades = student.get('grades', {})
+            att = grades.get('attendance', '')
+            mid = grades.get('mid', '')
+            fin = grades.get('final', '')
+
+            # Tính điểm trung bình
+            avg = ''
+            if att != '' and mid != '' and fin != '':
+                try:
+                    avg = round(float(att) * 0.2 + float(mid) * 0.3 + float(fin) * 0.5, 1)
+                except:
+                    avg = ''
+
+            writer.writerow([
+                idx,
+                student.get('full_name', ''),
+                student.get('student_code', ''),
+                att,
+                mid,
+                fin,
+                avg
+            ])
+
+        # Lấy nội dung CSV
+        csv_content = output.getvalue()
+
+        # Sanitize filename - loại bỏ ký tự đặc biệt
+        class_name = class_detail.get("class_name", "class")
+        # Loại bỏ ký tự không hợp lệ trong tên file
+        safe_filename = re.sub(r'[<>:"/\\|?*]', '_', class_name)
+        # Chỉ dùng ASCII trong filename để tránh lỗi encoding
+        safe_filename = safe_filename.encode('ascii', 'ignore').decode('ascii')
+        if not safe_filename:
+            safe_filename = "class"
+        filename = f"{safe_filename}_students.csv"
+
+        # Encode filename cho Content-Disposition (RFC 5987)
+        filename_encoded = quote(filename)
+
+        # Encode content sang bytes với UTF-8 (không cần BOM vì đã có \ufeff ở đầu)
+        csv_bytes = csv_content.encode('utf-8')
+
+        headers = {
+            'Content-Disposition': f'attachment; filename="{filename}"; filename*=UTF-8\'\'{filename_encoded}',
+            'Content-Type': 'text/csv; charset=utf-8',
+            'Cache-Control': 'no-cache'
+        }
+
+        # Dùng Response thay vì StreamingResponse để tránh lỗi encoding
+        return Response(
+            content=csv_bytes,
+            media_type="text/csv; charset=utf-8",
+            headers=headers
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        error_detail = f"Export failed: {str(e)}\n{traceback.format_exc()}"
+        print(f"❌ Export error: {error_detail}")
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
+
+
+@router.post("/classes/{class_id}/import", summary="Import students from CSV")
+async def import_class_students(
+    class_id: int,
+    file: UploadFile = File(...),
+    current_user: models.User = Depends(get_current_teacher),
+    db: Session = Depends(get_db)
+):
+    """
+    Import danh sách sinh viên từ file CSV
+    Format: STT,Họ và tên,Mã sinh viên
+    hoặc: Họ và tên,Mã sinh viên
+    """
+    # Kiểm tra quyền truy cập
+    ta = db.query(models.TeachingAssignment).filter(
+        models.TeachingAssignment.class_id == class_id,
+        models.TeachingAssignment.teacher_id == current_user.user_id
+    ).first()
+    if not ta:
+        raise HTTPException(status_code=403, detail="You are not assigned to this class")
+
+    # Kiểm tra file type
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="Only CSV files are allowed")
+
+    try:
+        # Đọc file với nhiều encoding khác nhau
+        content = await file.read()
+
+        # Thử decode với các encoding khác nhau
+        text_content = None
+        for encoding in ['utf-8-sig', 'utf-8', 'cp1252', 'latin1']:
+            try:
+                text_content = content.decode(encoding)
+                break
+            except UnicodeDecodeError:
+                continue
+
+        if text_content is None:
+            raise HTTPException(status_code=400, detail="Cannot decode file. Please use UTF-8 encoding")
+
+        # Loại bỏ BOM nếu có
+        text_content = text_content.lstrip('\ufeff')
+
+        # Parse CSV
+        csv_reader = csv.reader(io.StringIO(text_content))
+        rows = list(csv_reader)
+
+        if len(rows) < 2:
+            raise HTTPException(status_code=400, detail="CSV file is empty or missing header")
+
+        # Bỏ qua header
+        header = rows[0]
+        data_rows = rows[1:]
+
+        added_count = 0
+        errors = []
+
+        for idx, row in enumerate(data_rows, start=2):
+            if not row or len(row) < 2:
+                continue
+
+            # Loại bỏ khoảng trắng thừa ở đầu/cuối mỗi cell
+            row = [cell.strip() for cell in row]
+
+            # Xác định vị trí của tên và mã SV
+            # Format 1: STT, Họ và tên, Mã sinh viên, ... (có STT ở đầu)
+            # Format 2: Họ và tên, Mã sinh viên (không có STT)
+            full_name = None
+            student_code = None
+
+            if len(row) >= 3:
+                # Kiểm tra xem cột đầu có phải số (STT) không
+                first_col = row[0].strip()
+                if first_col.isdigit() or first_col == '':
+                    # Format có STT: lấy cột 1 và 2
+                    full_name = row[1].strip()
+                    student_code = row[2].strip()
+                else:
+                    # Format không STT nhưng có 3+ cột: lấy cột 0 và 1
+                    full_name = row[0].strip()
+                    student_code = row[1].strip()
+            elif len(row) >= 2:
+                # Chỉ có 2 cột: Họ tên, Mã SV
+                full_name = row[0].strip()
+                student_code = row[1].strip()
+
+            if not full_name or not student_code:
+                errors.append(f"Row {idx}: Missing name or student code")
+                continue
+
+            try:
+                teacher_crud.add_student_to_class(db, class_id, full_name, student_code)
+                added_count += 1
+            except Exception as e:
+                # Rollback để tránh lỗi "transaction has been rolled back"
+                db.rollback()
+                error_msg = str(e)
+                # Rút gọn thông báo lỗi cho dễ đọc
+                if "already enrolled" in error_msg:
+                    errors.append(f"Row {idx} ({student_code}): Already enrolled in class")
+                elif "UNIQUE constraint" in error_msg:
+                    errors.append(f"Row {idx} ({student_code}): Student code already exists")
+                else:
+                    errors.append(f"Row {idx} ({student_code}): {error_msg}")
+
+        return {
+            "ok": True,
+            "message": f"Successfully imported {added_count} students",
+            "added_count": added_count,
+            "total_rows": len(data_rows),
+            "errors": errors if errors else None
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to import: {str(e)}")
