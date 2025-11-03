@@ -124,30 +124,38 @@ def add_student_to_class(db: Session, class_id: int, full_name: str, student_cod
     Else create a new User (student) and Student profile, then Enrollment.
     Returns a dict with minimal student info.
     """
-    # Try find user by username (we assume username = student_code)
-    user = crud.get_user_by_username(db, student_code)
-    if not user:
-        # create user with random password; crud.create_user should handle student_profile fields if supported
-        temp_pass = secrets.token_urlsafe(8)
-        uc = schemas.UserCreate(
-            username=student_code,
-            password=temp_pass,
-            full_name=full_name,
-            email=None,
-            role=schemas.UserRole.student,
-            student_code=student_code
-        )
-        user = crud.create_user(db, uc)
+    # Try find student by student_code first (primary way to identify students)
+    student = db.query(models.Student).filter(models.Student.student_code == student_code).first()
 
-    # ensure student profile exists
-    student = db.query(models.Student).filter(models.Student.student_id == user.user_id).first()
-    if not student:
+    if student:
+        # Student already exists, get the user
+        user = db.query(models.User).filter(models.User.user_id == student.student_id).first()
+        if not user:
+            # Student exists but no User (shouldn't happen, but handle it)
+            raise Exception(f"Student with code {student_code} exists but has no user account")
+    else:
+        # Student doesn't exist, try find user by username
+        user = crud.get_user_by_username(db, student_code)
+        if not user:
+            # Create new user with random password
+            temp_pass = secrets.token_urlsafe(8)
+            uc = schemas.UserCreate(
+                username=student_code,
+                password=temp_pass,
+                full_name=full_name,
+                email=None,
+                role=schemas.UserRole.student,
+                student_code=student_code
+            )
+            user = crud.create_user(db, uc)
+
+        # Create student profile
         student = models.Student(student_id=user.user_id, student_code=student_code)
         db.add(student)
         db.commit()
         db.refresh(student)
 
-    # ensure enrollment
+    # Ensure enrollment (student can be enrolled in multiple classes)
     enrollment = db.query(models.Enrollment).filter(
         models.Enrollment.class_id == class_id,
         models.Enrollment.student_id == student.student_id
@@ -156,6 +164,9 @@ def add_student_to_class(db: Session, class_id: int, full_name: str, student_cod
         enrollment = models.Enrollment(student_id=student.student_id, class_id=class_id)
         db.add(enrollment)
         db.commit()
+    else:
+        # Student already enrolled in this class
+        raise Exception(f"Student {student_code} is already enrolled in this class")
 
     return {
         "student_id": student.student_id,

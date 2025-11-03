@@ -305,13 +305,17 @@ def export_class_students(
         class_name = class_detail.get("class_name", "class")
         # Loại bỏ ký tự không hợp lệ trong tên file
         safe_filename = re.sub(r'[<>:"/\\|?*]', '_', class_name)
+        # Chỉ dùng ASCII trong filename để tránh lỗi encoding
+        safe_filename = safe_filename.encode('ascii', 'ignore').decode('ascii')
+        if not safe_filename:
+            safe_filename = "class"
         filename = f"{safe_filename}_students.csv"
 
         # Encode filename cho Content-Disposition (RFC 5987)
         filename_encoded = quote(filename)
 
-        # Encode content sang bytes với UTF-8 BOM
-        csv_bytes = csv_content.encode('utf-8-sig')
+        # Encode content sang bytes với UTF-8 (không cần BOM vì đã có \ufeff ở đầu)
+        csv_bytes = csv_content.encode('utf-8')
 
         headers = {
             'Content-Disposition': f'attachment; filename="{filename}"; filename*=UTF-8\'\'{filename_encoded}',
@@ -375,6 +379,9 @@ async def import_class_students(
         if text_content is None:
             raise HTTPException(status_code=400, detail="Cannot decode file. Please use UTF-8 encoding")
 
+        # Loại bỏ BOM nếu có
+        text_content = text_content.lstrip('\ufeff')
+
         # Parse CSV
         csv_reader = csv.reader(io.StringIO(text_content))
         rows = list(csv_reader)
@@ -383,6 +390,7 @@ async def import_class_students(
             raise HTTPException(status_code=400, detail="CSV file is empty or missing header")
 
         # Bỏ qua header
+        header = rows[0]
         data_rows = rows[1:]
 
         added_count = 0
@@ -392,13 +400,28 @@ async def import_class_students(
             if not row or len(row) < 2:
                 continue
 
+            # Loại bỏ khoảng trắng thừa ở đầu/cuối mỗi cell
+            row = [cell.strip() for cell in row]
+
             # Xác định vị trí của tên và mã SV
-            # Nếu có STT ở cột đầu thì tên ở cột 1, mã ở cột 2
-            # Ngược lại tên ở cột 0, mã ở cột 1
-            if len(row) >= 3 and row[0].strip().isdigit():
-                full_name = row[1].strip()
-                student_code = row[2].strip()
-            else:
+            # Format 1: STT, Họ và tên, Mã sinh viên, ... (có STT ở đầu)
+            # Format 2: Họ và tên, Mã sinh viên (không có STT)
+            full_name = None
+            student_code = None
+
+            if len(row) >= 3:
+                # Kiểm tra xem cột đầu có phải số (STT) không
+                first_col = row[0].strip()
+                if first_col.isdigit() or first_col == '':
+                    # Format có STT: lấy cột 1 và 2
+                    full_name = row[1].strip()
+                    student_code = row[2].strip()
+                else:
+                    # Format không STT nhưng có 3+ cột: lấy cột 0 và 1
+                    full_name = row[0].strip()
+                    student_code = row[1].strip()
+            elif len(row) >= 2:
+                # Chỉ có 2 cột: Họ tên, Mã SV
                 full_name = row[0].strip()
                 student_code = row[1].strip()
 
@@ -410,7 +433,16 @@ async def import_class_students(
                 teacher_crud.add_student_to_class(db, class_id, full_name, student_code)
                 added_count += 1
             except Exception as e:
-                errors.append(f"Row {idx}: {str(e)}")
+                # Rollback để tránh lỗi "transaction has been rolled back"
+                db.rollback()
+                error_msg = str(e)
+                # Rút gọn thông báo lỗi cho dễ đọc
+                if "already enrolled" in error_msg:
+                    errors.append(f"Row {idx} ({student_code}): Already enrolled in class")
+                elif "UNIQUE constraint" in error_msg:
+                    errors.append(f"Row {idx} ({student_code}): Student code already exists")
+                else:
+                    errors.append(f"Row {idx} ({student_code}): {error_msg}")
 
         return {
             "ok": True,
