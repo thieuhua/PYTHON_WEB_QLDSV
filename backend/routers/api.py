@@ -57,7 +57,7 @@ def register(user: UserAuth, db: Session = Depends(get_db)):
 
         print(f"✅ Đã tạo user '{user.username}' và student profile với mã: {student_code}")
 
-        token = jwt_auth.create_token({"username": db_user.username, "password": db_user.password})
+        token = jwt_auth.create_token({"username": db_user.username, "password": db_user.password, "role": db_user.role.value})
 
         return {
             "token": token,
@@ -92,7 +92,7 @@ def login(user: UserAuth, db: Session = Depends(get_db)):
     if not ok:
         raise HTTPException(401)
 
-    token = jwt_auth.create_token({"username": user_db.username, "id": user_db.user_id})
+    token = jwt_auth.create_token({"username": user_db.username, "id": user_db.user_id, "role": user_db.role.value})
     print("Generated token:", token)
 
     return {
@@ -199,7 +199,15 @@ class UpdateRoleRequest(BaseModel):
 
 
 @router.post("/admin/update-role")
-def update_user_role(role_data: UpdateRoleRequest, db: Session = Depends(get_db)):
+def update_user_role(
+    role_data: UpdateRoleRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(jwt_auth.auth)  # 👈 Bắt buộc có token hợp lệ
+):
+    # ✅ Kiểm tra nếu không phải admin thì chặn
+    if current_user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Access denied. Admin only.")
+
     db_user = crud.get_user_by_username(db, role_data.username)
     if not db_user:
         raise HTTPException(404, detail="User not found")
@@ -212,6 +220,7 @@ def update_user_role(role_data: UpdateRoleRequest, db: Session = Depends(get_db)
     db.refresh(db_user)
 
     return {"message": f"Đã cập nhật role {role_data.new_role} cho user {role_data.username}"}
+
 
 
 @router.get("/debug-all-users")
