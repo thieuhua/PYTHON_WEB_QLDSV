@@ -19,6 +19,37 @@ def get_user_by_username(db: Session, username: str) -> Optional[models.User]:
 def get_users(db: Session, skip: int = 0, limit: int = 100) -> List[models.User]:
     return db.query(models.User).offset(skip).limit(limit).all()
 
+def create_user(db: Session, user: schemas.UserCreate) -> models.User:
+    db_user = models.User(
+        username=user.username,
+        password=user.password,
+        full_name=user.full_name,
+        email=user.email,
+        role=user.role,
+    )
+    db.add(db_user)
+    db.flush()
+
+    # Tạo profile tương ứng với role
+    if user.role == models.UserRole.student and hasattr(user, 'student_code'):
+        student = models.Student(
+            student_id=db_user.user_id,
+            student_code=user.student_code,
+            birthdate=user.birthdate if hasattr(user, 'birthdate') else None
+        )
+        db.add(student)
+    
+    elif user.role == models.UserRole.teacher:
+        teacher = models.Teacher(
+            teacher_id=db_user.user_id,
+            department=user.department if hasattr(user, 'department') else None,
+            title=user.title if hasattr(user, 'title') else None
+        )
+        db.add(teacher)
+
+    db.commit()
+    db.refresh(db_user)
+    return db_user
 
 def delete_user(db: Session, user_id: int) -> None:
     db_user = get_user(db, user_id)
