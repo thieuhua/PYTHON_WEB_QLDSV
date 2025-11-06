@@ -15,23 +15,22 @@ app = FastAPI()
 origins = [
     "http://localhost:8000",
     "http://127.0.0.1:8000",
-    # hoặc "*" để cho tất cả origin (không khuyến nghị trong production)
 ]
 
 
 async def get_current_user(request: Request):
     """Lấy thông tin user từ token"""
     try:
-        # Lấy token từ cookie hoặc header
+       
         token = request.cookies.get("access_token")
         if not token:
-            # Hoặc từ Authorization header
+           
             auth_header = request.headers.get("Authorization")
             if auth_header and auth_header.startswith("Bearer "):
                 token = auth_header.split("Bearer ")[1]
 
         if token:
-            # Sử dụng hàm decode_tokenNE từ jwt_auth
+            
             user = jwt_auth.decode_tokenNE(token)
             return user
     except Exception as e:
@@ -46,17 +45,17 @@ def require_role(required_role: str):
         user = await get_current_user(request)
 
         if not user:
-            # Chưa đăng nhập -> chuyển hướng đến login
+            
             return RedirectResponse(url="/login")
 
-        # Lấy role thực tế từ database
+        
         from .db import crud
         from .db.database import SessionLocal
         db = SessionLocal()
         try:
             db_user = crud.get_user_by_username(db, user['username'])
             if not db_user or db_user.role != required_role:
-                # Không đúng role -> trả về lỗi 403
+                
                 raise HTTPException(
                     status_code=403,
                     detail=f"Yêu cầu role {required_role} để truy cập trang này"
@@ -68,14 +67,14 @@ def require_role(required_role: str):
     return role_checker
 
 
-# ====== ERROR HANDLER ======
+
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     if exc.status_code == 403:
         return templates.TemplateResponse("403.html", {"request": request}, status_code=403)
     elif exc.status_code == 401:
         return RedirectResponse(url="/login")
-    # For other errors, return JSON response
+    
     return JSONResponse(
         status_code=exc.status_code,
         content={"detail": exc.detail},
@@ -90,11 +89,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Gắn router chính (đã bao gồm api + student)
-app.include_router(mainrouter, prefix="/api")
-app.include_router(chatbot.router)  # không cần prefix nữa vì chatbot.py đã có prefix="/chatbot"
 
-# Mount static
+app.include_router(mainrouter, prefix="/api")
+app.include_router(chatbot.router)  
+
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 app.mount("/static", StaticFiles(directory=BASE_DIR / "Frontend" / "static"), name="static")
 
