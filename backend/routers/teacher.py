@@ -19,7 +19,7 @@ router = APIRouter(
 )
 
 
-# ✅ SCHEMA CHO CẬP NHẬT ĐIỂM
+
 class GradeUpdateRequest(BaseModel):
     student_id: int
     class_id: int
@@ -37,7 +37,7 @@ class GradeUpdateRequest(BaseModel):
         }
 
 
-# ✅ DEPENDENCY - LẤY GIẢNG VIÊN TỪ TOKEN
+
 def get_current_teacher(request: Request, db: Session = Depends(get_db)):
     token = None
     token = request.cookies.get("token")
@@ -73,7 +73,7 @@ def list_classes(current_user: models.User = Depends(get_current_teacher), db: S
 
     result = []
     for c in cls:
-        # ✅ Đếm số sinh viên trong lớp
+        
         student_count = db.query(models.Enrollment).filter(models.Enrollment.class_id == c.class_id).count()
 
         result.append({
@@ -193,7 +193,7 @@ def delete_class(class_id: int,
     """
     Xóa lớp học do giáo viên sở hữu, bao gồm enrollment, assignment, join code, và điểm.
     """
-    # Kiểm tra quyền sở hữu
+   
     ta = (
         db.query(models.TeachingAssignment)
         .filter(
@@ -213,25 +213,25 @@ def delete_class(class_id: int,
         raise HTTPException(status_code=404, detail="Class not found")
 
     try:
-        # Xóa Enrollment
+        
         db.query(models.Enrollment).filter(models.Enrollment.class_id == class_id).delete(synchronize_session=False)
 
-        # Xóa TeachingAssignment
+        
         db.query(models.TeachingAssignment).filter(models.TeachingAssignment.class_id == class_id).delete(synchronize_session=False)
 
-        # Xóa JoinCode (mã tham gia lớp)
+        
         if hasattr(models, "JoinCode"):
             db.query(models.JoinCode).filter(models.JoinCode.class_id == class_id).delete(synchronize_session=False)
         elif hasattr(models, "Join_Code"):
             db.query(models.Join_Code).filter(models.Join_Code.class_id == class_id).delete(synchronize_session=False)
 
-        # Xóa bảng điểm (nếu có)
+       
         if hasattr(models, "Grade"):
             db.query(models.Grade).filter(models.Grade.class_id == class_id).delete(synchronize_session=False)
         elif hasattr(models, "Score"):
             db.query(models.Score).filter(models.Score.class_id == class_id).delete(synchronize_session=False)
 
-        # Xóa lớp
+        
         db.delete(cls)
         db.commit()
         return {"ok": True, "message": f"Class {class_id} deleted successfully"}
@@ -251,7 +251,7 @@ def export_class_students(
     Export danh sách sinh viên của lớp ra file CSV với encoding UTF-8 BOM để hỗ trợ tiếng Việt
     """
     try:
-        # Kiểm tra quyền truy cập
+       
         ta = db.query(models.TeachingAssignment).filter(
             models.TeachingAssignment.class_id == class_id,
             models.TeachingAssignment.teacher_id == current_user.user_id
@@ -259,28 +259,28 @@ def export_class_students(
         if not ta:
             raise HTTPException(status_code=403, detail="You are not assigned to this class")
 
-        # Lấy thông tin lớp và sinh viên
+        
         class_detail = teacher_crud.get_class_detail(db, class_id)
         if not class_detail:
             raise HTTPException(status_code=404, detail="Class not found")
 
-        # Tạo CSV với UTF-8 BOM
+        
         output = io.StringIO()
-        # Thêm BOM để Excel nhận diện UTF-8
+       
         output.write('\ufeff')
 
         writer = csv.writer(output, quoting=csv.QUOTE_ALL)
-        # Header
+        
         writer.writerow(['STT', 'Họ và tên', 'Mã sinh viên', 'Chuyên cần', 'Giữa kỳ', 'Cuối kỳ', 'Trung bình'])
 
-        # Data
+        
         for idx, student in enumerate(class_detail.get('students', []), start=1):
             grades = student.get('grades', {})
             att = grades.get('attendance', '')
             mid = grades.get('mid', '')
             fin = grades.get('final', '')
 
-            # Tính điểm trung bình
+            
             avg = ''
             if att != '' and mid != '' and fin != '':
                 try:
@@ -298,23 +298,23 @@ def export_class_students(
                 avg
             ])
 
-        # Lấy nội dung CSV
+       
         csv_content = output.getvalue()
 
-        # Sanitize filename - loại bỏ ký tự đặc biệt
+        
         class_name = class_detail.get("class_name", "class")
-        # Loại bỏ ký tự không hợp lệ trong tên file
+        
         safe_filename = re.sub(r'[<>:"/\\|?*]', '_', class_name)
-        # Chỉ dùng ASCII trong filename để tránh lỗi encoding
+        
         safe_filename = safe_filename.encode('ascii', 'ignore').decode('ascii')
         if not safe_filename:
             safe_filename = "class"
         filename = f"{safe_filename}_students.csv"
 
-        # Encode filename cho Content-Disposition (RFC 5987)
+        
         filename_encoded = quote(filename)
 
-        # Encode content sang bytes với UTF-8 (không cần BOM vì đã có \ufeff ở đầu)
+       
         csv_bytes = csv_content.encode('utf-8')
 
         headers = {
@@ -323,7 +323,7 @@ def export_class_students(
             'Cache-Control': 'no-cache'
         }
 
-        # Dùng Response thay vì StreamingResponse để tránh lỗi encoding
+        
         return Response(
             content=csv_bytes,
             media_type="text/csv; charset=utf-8",
@@ -351,7 +351,7 @@ async def import_class_students(
     Format: STT,Họ và tên,Mã sinh viên
     hoặc: Họ và tên,Mã sinh viên
     """
-    # Kiểm tra quyền truy cập
+    
     ta = db.query(models.TeachingAssignment).filter(
         models.TeachingAssignment.class_id == class_id,
         models.TeachingAssignment.teacher_id == current_user.user_id
@@ -359,15 +359,15 @@ async def import_class_students(
     if not ta:
         raise HTTPException(status_code=403, detail="You are not assigned to this class")
 
-    # Kiểm tra file type
+    
     if not file.filename.endswith('.csv'):
         raise HTTPException(status_code=400, detail="Only CSV files are allowed")
 
     try:
-        # Đọc file với nhiều encoding khác nhau
+        
         content = await file.read()
 
-        # Thử decode với các encoding khác nhau
+       
         text_content = None
         for encoding in ['utf-8-sig', 'utf-8', 'cp1252', 'latin1']:
             try:
@@ -379,17 +379,17 @@ async def import_class_students(
         if text_content is None:
             raise HTTPException(status_code=400, detail="Cannot decode file. Please use UTF-8 encoding")
 
-        # Loại bỏ BOM nếu có
+        
         text_content = text_content.lstrip('\ufeff')
 
-        # Parse CSV
+        
         csv_reader = csv.reader(io.StringIO(text_content))
         rows = list(csv_reader)
 
         if len(rows) < 2:
             raise HTTPException(status_code=400, detail="CSV file is empty or missing header")
 
-        # Bỏ qua header
+        
         header = rows[0]
         data_rows = rows[1:]
 
@@ -400,28 +400,25 @@ async def import_class_students(
             if not row or len(row) < 2:
                 continue
 
-            # Loại bỏ khoảng trắng thừa ở đầu/cuối mỗi cell
+            
             row = [cell.strip() for cell in row]
 
-            # Xác định vị trí của tên và mã SV
-            # Format 1: STT, Họ và tên, Mã sinh viên, ... (có STT ở đầu)
-            # Format 2: Họ và tên, Mã sinh viên (không có STT)
             full_name = None
             student_code = None
 
             if len(row) >= 3:
-                # Kiểm tra xem cột đầu có phải số (STT) không
+                
                 first_col = row[0].strip()
                 if first_col.isdigit() or first_col == '':
-                    # Format có STT: lấy cột 1 và 2
+                   
                     full_name = row[1].strip()
                     student_code = row[2].strip()
                 else:
-                    # Format không STT nhưng có 3+ cột: lấy cột 0 và 1
+                   
                     full_name = row[0].strip()
                     student_code = row[1].strip()
             elif len(row) >= 2:
-                # Chỉ có 2 cột: Họ tên, Mã SV
+               
                 full_name = row[0].strip()
                 student_code = row[1].strip()
 
@@ -433,10 +430,10 @@ async def import_class_students(
                 teacher_crud.add_student_to_class(db, class_id, full_name, student_code)
                 added_count += 1
             except Exception as e:
-                # Rollback để tránh lỗi "transaction has been rolled back"
+                
                 db.rollback()
                 error_msg = str(e)
-                # Rút gọn thông báo lỗi cho dễ đọc
+                
                 if "already enrolled" in error_msg:
                     errors.append(f"Row {idx} ({student_code}): Already enrolled in class")
                 elif "UNIQUE constraint" in error_msg:
