@@ -44,9 +44,7 @@ def decode_tokenNE(token: str):
     except JWTError:
         return None
 
-# Thêm hàm verify_token (thay thế cho hàm bị lỗi)
 def verify_token(token: str):
-    """Hàm verify_token thay thế cho hàm cũ bị lỗi"""
     return decode_tokenNE(token)
 
 async def auth_request(request: Request = None, token: str = None):
