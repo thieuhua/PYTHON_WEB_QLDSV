@@ -25,12 +25,11 @@ def get_db():
 @router.post("/register")
 def register(user: UserAuth, db: Session = Depends(get_db)):
     try:
-        # Kiểm tra username đã tồn tại chưa
+        
         existing_user = crud.get_user_by_username(db, user.username)
         if existing_user:
             raise HTTPException(status_code=400, detail="Username đã tồn tại")
 
-        # Tạo user object
         hashedpassw: str = jwt_auth.hash_password(user.password)
         db_user = models.User(
             username=user.username,
@@ -40,9 +39,8 @@ def register(user: UserAuth, db: Session = Depends(get_db)):
             role=models.UserRole.student
         )
         db.add(db_user)
-        db.flush()  # Lấy user_id nhưng chưa commit
+        db.flush()  
 
-        # Tạo student profile với mã tự động
         student_code = f"ST{db_user.user_id:04d}"
         db_student = models.Student(
             student_id=db_user.user_id,
@@ -51,7 +49,6 @@ def register(user: UserAuth, db: Session = Depends(get_db)):
         )
         db.add(db_student)
 
-        # Commit cả user và student cùng lúc
         db.commit()
         db.refresh(db_user)
 
@@ -74,7 +71,7 @@ def register(user: UserAuth, db: Session = Depends(get_db)):
         import traceback
         traceback.print_exc()
 
-        # Kiểm tra lỗi duplicate
+        
         error_msg = str(e).lower()
         if 'unique' in error_msg or 'duplicate' in error_msg:
             raise HTTPException(status_code=400, detail="Username hoặc mã sinh viên đã tồn tại")
@@ -134,13 +131,12 @@ def update_me(update: schemas.UserUpdate, user: dict = Depends(jwt_auth.auth), d
     if str(effective_role) == 'student':
         student = crud.get_student(db, db_user.user_id)
         if student:
-            # [SỬA] Cho phép update student_code và birthdate khi student đã tồn tại
             if 'student_code' in data:
                 new_code = data.pop('student_code')
-                # Kiểm tra mã không được rỗng
+                
                 if new_code and new_code.strip():
                     new_code = new_code.strip()
-                    # Kiểm tra xem mã mới có trùng với mã khác không (trừ mã hiện tại)
+                   
                     existing = db.query(models.Student).filter(
                         models.Student.student_code == new_code,
                         models.Student.student_id != student.student_id
@@ -149,7 +145,7 @@ def update_me(update: schemas.UserUpdate, user: dict = Depends(jwt_auth.auth), d
                         raise HTTPException(status_code=400, detail=f"Mã sinh viên '{new_code}' đã tồn tại")
                     student.student_code = new_code
                 elif new_code == '' or new_code is None:
-                    # Nếu gửi chuỗi rỗng hoặc None, không update (giữ nguyên mã cũ)
+                    
                     pass
             if 'birthdate' in data:
                 student.birthdate = data.pop('birthdate')
@@ -184,7 +180,7 @@ def update_me(update: schemas.UserUpdate, user: dict = Depends(jwt_auth.auth), d
         db.refresh(db_user)
     except Exception as e:
         db.rollback()
-        # Kiểm tra nếu là lỗi duplicate key
+        
         error_msg = str(e).lower()
         if 'unique' in error_msg or 'duplicate' in error_msg:
             raise HTTPException(status_code=400, detail="Mã sinh viên hoặc email đã tồn tại")
@@ -202,9 +198,9 @@ class UpdateRoleRequest(BaseModel):
 def update_user_role(
     role_data: UpdateRoleRequest,
     db: Session = Depends(get_db),
-    current_user: dict = Depends(jwt_auth.auth)  # 👈 Bắt buộc có token hợp lệ
+    current_user: dict = Depends(jwt_auth.auth)  
 ):
-    # ✅ Kiểm tra nếu không phải admin thì chặn
+    
     if current_user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Access denied. Admin only.")
 
@@ -242,14 +238,14 @@ def check_auth(user: dict = Depends(jwt_auth.auth)):
     return {"authenticated": True, "user": user}
 
 
-# ✅ CÁC API CHO STUDENT - CHỈ GIỮ MỘT BẢN DUY NHẤT
+
 @router.get("/students/{student_id}/enrollments", response_model=list[schemas.EnrollmentRead])
 def get_student_enrollments_api(
         student_id: int,
         db: Session = Depends(get_db),
         user: dict = Depends(jwt_auth.auth)
 ):
-    """Lấy danh sách các lớp học mà sinh viên đã đăng ký"""
+    
     enrollments = crud.get_student_enrollments(db, student_id)
     return enrollments
 
@@ -276,11 +272,6 @@ def get_student_grades_api(
         db: Session = Depends(get_db),
         user: dict = Depends(jwt_auth.auth)
 ):
-    """
-    Lấy điểm của sinh viên, có thể lọc theo lớp
 
-    Query params:
-    - class_id: (Optional) Lọc điểm theo lớp học
-    """
     grades = crud.get_student_grades(db, student_id, class_id)
     return grades
