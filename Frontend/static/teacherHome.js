@@ -1,10 +1,10 @@
-// teacherHome.js — full file (y hệt yêu cầu), đồng bộ studentHome UI, fix chức năng
+
 
 const API_BASE_URL = '/api';
 let teacherClasses = [];
 let currentClass = null;
 
-// ---------- Helpers ----------
+
 function getAuthHeaders() {
   const token = localStorage.getItem('token') || getCookie('token');
   return {
@@ -35,7 +35,7 @@ function notify(msg, isError = false) {
   setTimeout(() => el.remove(), 3200);
 }
 
-// ---------- Dark mode helper (inject button like studentHome) ----------
+
 function ensureHeaderDarkToggle() {
   try {
     const headerButtons = document.querySelector('.header-buttons');
@@ -63,7 +63,7 @@ function toggleDarkMode() {
   localStorage.setItem('darkMode', document.body.classList.contains('dark-mode') ? 'true' : 'false');
 }
 
-// ---------- Fetch user info ----------
+
 async function fetchUser() {
   try {
     const res = await fetch(`${API_BASE_URL}/me`, { headers: getAuthHeaders() });
@@ -76,7 +76,7 @@ async function fetchUser() {
   }
 }
 
-// ---------- Fetch classes ----------
+
 async function fetchClasses() {
   try {
     const res = await fetch(`${API_BASE_URL}/teacher/classes`, { headers: getAuthHeaders() });
@@ -91,7 +91,7 @@ async function fetchClasses() {
   }
 }
 
-// ---------- Render class cards (fix click overlay by using event listeners) ----------
+
 function renderClassCards() {
   const grid = document.getElementById('classes-grid');
   if (!grid) return;
@@ -114,7 +114,7 @@ function renderClassCards() {
     `;
   }).join('');
 
-  // Gắn click riêng cho nút Chi tiết
+ 
   document.querySelectorAll('.class-detail-btn').forEach(btn => {
     btn.addEventListener('click', e => {
       e.stopPropagation();
@@ -124,7 +124,7 @@ function renderClassCards() {
   });
 }
 
-// ---------- Create class ----------
+
 async function createClass(name, code) {
   try {
     const now = new Date();
@@ -151,12 +151,12 @@ async function createClass(name, code) {
   }
 }
 
-// ---------- Open class modal & fetch students ----------
+
 async function fetchClassDetail(id) {
   try {
     const res = await fetch(`${API_BASE_URL}/teacher/classes/${id}`, {
       headers: getAuthHeaders(),
-      cache: 'no-cache' // Đảm bảo lấy dữ liệu mới nhất
+      cache: 'no-cache'
     });
     if (!res.ok) throw new Error('Không tải được dữ liệu lớp');
     return await res.json();
@@ -193,7 +193,7 @@ function closeModal() {
   const sa = document.getElementById('select-all'); if (sa) sa.checked = false;
 }
 
-// ---------- Render student table (fixed columns) ----------
+
 function renderStudentTable() {
   const tbody = document.getElementById('student-tbody');
   if (!tbody) return;
