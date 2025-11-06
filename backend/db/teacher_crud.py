@@ -3,6 +3,7 @@ from typing import List, Dict, Optional, Tuple
 import secrets
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
+import random
 
 from . import models, schemas, crud  # assumes crud.get_user_by_username and crud.create_user exist
 from .database import SessionLocal
