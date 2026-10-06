@@ -6,7 +6,7 @@
 # Lấy API key miễn phí tại: https://makersuite.google.com/app/apikey
 # Sau khi lấy được, thay "YOUR_API_KEY_HERE" bằng API key thật
 
-GEMINI_API_KEY = "AIzaSyBnKlbs1VW5EqmnaURssOIWbJ-Azrs6PxM"  # ← THAY ĐỔI CHỖ NÀY
+GEMINI_API_KEY = "AIzaSyBnKlbs1VW5EqmnaURssOIWbJ-Azrs6PxM" 
 
 # =========================
 # MODEL SETTINGS

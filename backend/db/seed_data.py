@@ -1,6 +1,6 @@
 """
 Script để tạo dữ liệu mẫu cho sinh viên
-Chạy: python -m backend.seed_student_data
+Chạy: py -m backend.db.seed_data
 """
 from . import database, models
 from ..routers import jwt_auth

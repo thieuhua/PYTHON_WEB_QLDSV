@@ -20,18 +20,14 @@ origins = [
 
 
 async def get_current_user(request: Request):
-    """Lấy thông tin user từ token"""
     try:
-        # Lấy token từ cookie hoặc header
         token = request.cookies.get("access_token")
         if not token:
-            # Hoặc từ Authorization header
             auth_header = request.headers.get("Authorization")
             if auth_header and auth_header.startswith("Bearer "):
                 token = auth_header.split("Bearer ")[1]
 
         if token:
-            # Sử dụng hàm decode_tokenNE từ jwt_auth
             user = jwt_auth.decode_tokenNE(token)
             return user
     except Exception as e:
@@ -40,8 +36,6 @@ async def get_current_user(request: Request):
 
 
 def require_role(required_role: str):
-    """Middleware kiểm tra role"""
-
     async def role_checker(request: Request):
         user = await get_current_user(request)
 
@@ -90,7 +84,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Gắn router chính (đã bao gồm api + student)
 app.include_router(mainrouter, prefix="/api")
 app.include_router(chatbot.router)  # không cần prefix nữa vì chatbot.py đã có prefix="/chatbot"
 

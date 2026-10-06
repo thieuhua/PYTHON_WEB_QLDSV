@@ -6,3 +6,4 @@ python-dotenv
 python-jose[cryptography]
 pydantic[email]
 google-generativeai
+python-multipart

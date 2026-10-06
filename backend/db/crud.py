@@ -4,10 +4,6 @@ from . import models, schemas
 from typing import List, Optional
 from datetime import date
 
-# ==============================================================
-# USER CRUD
-# ==============================================================
-
 def get_user(db: Session, user_id: int) -> Optional[models.User]:
     return db.query(models.User).filter(models.User.user_id == user_id).first()
 
@@ -59,9 +55,6 @@ def delete_user(db: Session, user_id: int) -> None:
     db.commit()
 
 
-# ==============================================================
-# TEACHER CRUD
-# ==============================================================
 
 def create_teacher(db: Session, teacher: schemas.TeacherCreate) -> models.Teacher:
     db_teacher = models.Teacher(
